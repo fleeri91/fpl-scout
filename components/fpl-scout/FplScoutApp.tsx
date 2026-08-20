@@ -24,6 +24,7 @@ import {
   mapElementToPlayer,
   type FplElement,
 } from './mapFplData'
+import { addRecentTeamId, removeRecentTeamId, useRecentTeamIds } from './recentTeams'
 import { ChipsScreen } from './screens/ChipsScreen'
 import { DashboardScreen } from './screens/DashboardScreen'
 import { ExplorerScreen, type ExplorerFilters } from './screens/ExplorerScreen'
@@ -57,6 +58,7 @@ export function FplScoutApp() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])
   const [now, setNow] = useState(() => Date.now())
+  const recentTeamIds = useRecentTeamIds()
 
   const [filters, setFilters] = useState<ExplorerFilters>({
     pos: 'All',
@@ -92,16 +94,22 @@ export function FplScoutApp() {
     return map
   }, [squadElementIds, summaries])
 
+  const connectWithId = (v: string) => {
+    setEntry(v)
+    setEntryError('')
+    setSelectedId(null)
+    setScreen('dash')
+    setTeamId(v)
+    addRecentTeamId(v, recentTeamIds)
+  }
+
   const connect = () => {
     const v = entry.trim()
     if (!/^\d{1,9}$/.test(v)) {
       setEntryError('Team IDs are numbers only, up to nine digits.')
       return
     }
-    setEntryError('')
-    setSelectedId(null)
-    setScreen('dash')
-    setTeamId(v)
+    connectWithId(v)
   }
 
   const onEntryKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -223,12 +231,15 @@ export function FplScoutApp() {
           entry={entry}
           entryError={entryError}
           connectLabel="Connect team"
+          recentTeamIds={recentTeamIds}
           onEntryChange={(v) => {
             setEntry(v)
             setEntryError('')
           }}
           onEntryKeyDown={onEntryKeyDown}
           onConnect={connect}
+          onSelectRecent={connectWithId}
+          onRemoveRecent={(id) => removeRecentTeamId(id, recentTeamIds)}
         />
       </div>
     )

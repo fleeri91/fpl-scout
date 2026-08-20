@@ -6,16 +6,22 @@ export function ConnectScreen({
   entry,
   entryError,
   connectLabel,
+  recentTeamIds,
   onEntryChange,
   onEntryKeyDown,
   onConnect,
+  onSelectRecent,
+  onRemoveRecent,
 }: {
   entry: string
   entryError: string
   connectLabel: string
+  recentTeamIds: string[]
   onEntryChange: (value: string) => void
   onEntryKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
   onConnect: () => void
+  onSelectRecent: (id: string) => void
+  onRemoveRecent: (id: string) => void
 }) {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
@@ -74,6 +80,60 @@ export function ConnectScreen({
                 <span data-delta="down" style={{ fontSize: 12 }}>
                   {entryError}
                 </span>
+              ) : null}
+              {recentTeamIds.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>
+                    Recent teams
+                  </span>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 9, background: 'var(--muted)', overflow: 'hidden' }}>
+                    {recentTeamIds.map((id, i) => (
+                      <div
+                        key={id}
+                        data-row
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 6,
+                          borderTop: i > 0 ? '1px solid var(--border)' : 'none',
+                        }}
+                      >
+                        <button
+                          onClick={() => onSelectRecent(id)}
+                          className="mono"
+                          style={{
+                            flex: 1,
+                            textAlign: 'left',
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--fg)',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            padding: '9px 12px',
+                          }}
+                        >
+                          {id}
+                        </button>
+                        <button
+                          onClick={() => onRemoveRecent(id)}
+                          aria-label={`Remove ${id} from recent teams`}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--fg3)',
+                            cursor: 'pointer',
+                            fontSize: 14,
+                            lineHeight: 1,
+                            padding: '9px 12px',
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : null}
             </div>
             <button
