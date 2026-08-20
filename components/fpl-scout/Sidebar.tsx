@@ -54,7 +54,7 @@ export function Sidebar({
               title={item.label}
               className={cn(
                 'h-auto w-full justify-start gap-2.5 rounded-lg border px-2.5 py-2 text-[13px] font-medium',
-                active ? 'border-border bg-muted text-foreground' : 'border-transparent text-[var(--fg2)]'
+                active ? 'border-border bg-muted text-foreground' : 'border-transparent text-(--fg2)'
               )}
             >
               <Icon className="size-[15px] shrink-0 opacity-90" />
@@ -67,11 +67,11 @@ export function Sidebar({
       <div className="flex flex-col gap-2 border-t border-border p-2">
         <div className="rounded-lg border border-border bg-muted p-2.5">
           {navOpen ? (
-            <div className="mb-1 text-[10px] tracking-wider text-[var(--fg3)] uppercase">{deadlineLabel}</div>
+            <div className="mb-1 text-[10px] tracking-wider text-(--fg3) uppercase">{deadlineLabel}</div>
           ) : null}
           <div className="mono text-sm font-semibold text-primary">{countdown}</div>
         </div>
-        <Button variant="outline" onClick={onToggleNav} className="h-auto rounded-lg py-1.5 text-[var(--fg2)]">
+        <Button variant="outline" onClick={onToggleNav} className="h-auto rounded-lg py-1.5 text-(--fg2)">
           {navOpen ? <ChevronsLeft className="size-4" /> : <ChevronsRight className="size-4" />}
         </Button>
       </div>

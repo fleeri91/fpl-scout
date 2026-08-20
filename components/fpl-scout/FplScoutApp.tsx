@@ -43,7 +43,7 @@ function StatusShell({ title, body, action }: { title: string; body: string; act
     <div className="grid min-h-screen place-items-center p-6">
       <Card className="w-full max-w-[430px] rounded-xl border-border p-5.5">
         <div className="text-base font-semibold tracking-tight">{title}</div>
-        <div className="mt-2 text-[12.5px] leading-relaxed text-[var(--fg2)]">{body}</div>
+        <div className="mt-2 text-[12.5px] leading-relaxed text-(--fg2)">{body}</div>
         {action ? <div className="mt-4">{action}</div> : null}
       </Card>
     </div>
@@ -309,7 +309,7 @@ export function FplScoutApp() {
   const picksAvailable = !!entryEventQuery.data
   const picksUnavailableNotice = (
     <div className="p-5.5">
-      <Card className="rounded-xl border-border p-6 text-center text-[13px] leading-relaxed text-[var(--fg2)]">
+      <Card className="rounded-xl border-border p-6 text-center text-[13px] leading-relaxed text-(--fg2)">
         Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API only exposes a gameweek&apos;s squad once its
         deadline has passed. Check back after {new Date(currentEvent.deadline_time).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}.
       </Card>

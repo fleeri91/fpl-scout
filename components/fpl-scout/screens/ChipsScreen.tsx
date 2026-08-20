@@ -12,7 +12,7 @@ export function ChipsScreen({ chips }: { chips: ChipCardView[] }) {
           <CardHeader className="flex flex-row items-start justify-between gap-3 py-4">
             <div>
               <div className="text-base font-bold tracking-tight">{c.name}</div>
-              <div className="mt-0.75 text-xs text-[var(--fg2)]">{c.availability}</div>
+              <div className="mt-0.75 text-xs text-(--fg2)">{c.availability}</div>
             </div>
             <Badge
               className="mono rounded-full px-2 py-1 text-[10px] font-bold tracking-wider uppercase"

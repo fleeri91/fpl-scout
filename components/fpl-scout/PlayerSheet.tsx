@@ -36,27 +36,27 @@ export function PlayerSheet({ player, onClose }: { player: Player; onClose: () =
             <i data-status={player.status} className="size-2 rounded-full" />
             {player.name}
           </SheetTitle>
-          <SheetDescription className="mono text-xs text-[var(--fg3)]">
+          <SheetDescription className="mono text-xs text-(--fg3)">
             {player.team} · {player.pos} · £{player.price.toFixed(1)}m · {player.own.toFixed(1)}% owned
           </SheetDescription>
-          <div className="text-xs leading-relaxed text-[var(--fg2)]">{player.note}</div>
+          <div className="text-xs leading-relaxed text-(--fg2)">{player.note}</div>
         </SheetHeader>
         <div className="flex flex-col gap-4.5 p-4.5">
           <div className="grid grid-cols-3 gap-2.5">
             {bigStats.map((s) => (
-              <Card key={s.k} className="gap-1 rounded-[10px] border-border bg-[var(--card2)] p-2.75">
-                <div className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">{s.k}</div>
+              <Card key={s.k} className="gap-1 rounded-[10px] border-border bg-(--card2) p-2.75">
+                <div className="text-[10px] tracking-wider text-(--fg3) uppercase">{s.k}</div>
                 <div className="mono text-[22px] font-semibold">{s.v}</div>
               </Card>
             ))}
           </div>
           <div>
             <div className="mb-2.5 text-xs font-semibold">Points per gameweek</div>
-            <Card className="rounded-[10px] border-border bg-[var(--card2)] p-3">
+            <Card className="rounded-[10px] border-border bg-(--card2) p-3">
               {isLoading ? (
-                <div className="p-6 text-center text-xs text-[var(--fg3)]">Loading…</div>
+                <div className="p-6 text-center text-xs text-(--fg3)">Loading…</div>
               ) : isError || chartData.length === 0 ? (
-                <div className="p-6 text-center text-xs text-[var(--fg3)]">No completed gameweeks yet this season.</div>
+                <div className="p-6 text-center text-xs text-(--fg3)">No completed gameweeks yet this season.</div>
               ) : (
                 <PlayerBarChart data={chartData} />
               )}
@@ -68,7 +68,7 @@ export function PlayerSheet({ player, onClose }: { player: Player; onClose: () =
               <TableBody>
                 {table.map((r) => (
                   <TableRow key={r.k} className="border-border hover:bg-transparent">
-                    <TableCell className="px-3 py-2 text-[var(--fg3)]">{r.k}</TableCell>
+                    <TableCell className="px-3 py-2 text-(--fg3)">{r.k}</TableCell>
                     <TableCell className="mono px-3 py-2 text-right font-semibold">{r.v}</TableCell>
                   </TableRow>
                 ))}

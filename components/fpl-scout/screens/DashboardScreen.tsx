@@ -34,7 +34,7 @@ function PlayerCard({ p, dim, onOpen }: { p: Player; dim?: boolean; onOpen: () =
       onClick={onOpen}
       className={cn(
         'h-auto flex-col items-stretch gap-2 rounded-[10px] border-border p-2.5 text-left whitespace-normal',
-        dim ? 'bg-transparent' : 'bg-[var(--card2)]'
+        dim ? 'bg-transparent' : 'bg-(--card2)'
       )}
     >
       <div className="flex items-center gap-2">
@@ -43,14 +43,14 @@ function PlayerCard({ p, dim, onOpen }: { p: Player; dim?: boolean; onOpen: () =
           {p.name}
         </span>
       </div>
-      <div className="mono flex justify-between text-[11px] text-[var(--fg3)]">
+      <div className="mono flex justify-between text-[11px] text-(--fg3)">
         <span>
           {p.team} · {p.pos}
         </span>
         {!dim ? <span>£{p.price.toFixed(1)}m</span> : null}
       </div>
       {dim ? (
-        <div className="mono flex justify-between text-[11px] text-[var(--fg3)]">
+        <div className="mono flex justify-between text-[11px] text-(--fg3)">
           <span />
           <span>{p.xgi.toFixed(1)} xGI</span>
         </div>
@@ -97,7 +97,7 @@ export function DashboardScreen({
       <div className="grid grid-cols-4 gap-3.5">
         {summary.map((s) => (
           <Card key={s.label} className="gap-1 rounded-xl border-border p-4">
-            <div className="text-[11px] tracking-wider text-[var(--fg3)] uppercase">{s.label}</div>
+            <div className="text-[11px] tracking-wider text-(--fg3) uppercase">{s.label}</div>
             <div className="mono mt-1 text-[28px] font-semibold tracking-tight">{s.value}</div>
             <div className="mono text-xs" data-delta={s.dir}>
               {s.note}
@@ -111,9 +111,9 @@ export function DashboardScreen({
           <CardHeader className="flex flex-row items-center justify-between border-b border-border py-4">
             <div>
               <div className="text-sm font-semibold">Squad health</div>
-              <div className="mt-0.5 text-xs text-[var(--fg2)]">Points trend over recent gameweeks · {squadNote}</div>
+              <div className="mt-0.5 text-xs text-(--fg2)">Points trend over recent gameweeks · {squadNote}</div>
             </div>
-            <div className="flex items-center gap-3 text-[11px] text-[var(--fg3)]">
+            <div className="flex items-center gap-3 text-[11px] text-(--fg3)">
               <span className="flex items-center gap-1.5">
                 <StatusDot status="ok" />
                 Starting
@@ -129,14 +129,14 @@ export function DashboardScreen({
             </div>
           </CardHeader>
           <CardContent className="py-3.5">
-            <div className="mb-2.5 text-[11px] tracking-wider text-[var(--fg3)] uppercase">Starting XI</div>
+            <div className="mb-2.5 text-[11px] tracking-wider text-(--fg3) uppercase">Starting XI</div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-2.5">
               {xi.map((p) => (
                 <PlayerCard key={p.id} p={p} onOpen={() => onOpenPlayer(p.id)} />
               ))}
             </div>
             <div className="my-4 h-px bg-border" />
-            <div className="mb-2.5 text-[11px] tracking-wider text-[var(--fg3)] uppercase">Bench</div>
+            <div className="mb-2.5 text-[11px] tracking-wider text-(--fg3) uppercase">Bench</div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-2.5 opacity-70">
               {bench.map((p) => (
                 <PlayerCard key={p.id} p={p} dim onOpen={() => onOpenPlayer(p.id)} />
@@ -148,13 +148,13 @@ export function DashboardScreen({
         <Card className="gap-0 rounded-xl border-border py-0">
           <CardHeader className="flex flex-row items-center justify-between border-b border-border py-4">
             <div className="text-sm font-semibold">This week&apos;s alerts</div>
-            <Badge variant="outline" className="mono rounded-full border-border bg-muted px-1.75 py-0.5 text-[11px] font-normal text-[var(--fg2)]">
+            <Badge variant="outline" className="mono rounded-full border-border bg-muted px-1.75 py-0.5 text-[11px] font-normal text-(--fg2)">
               {alerts.length}
             </Badge>
           </CardHeader>
           <CardContent className="flex flex-col gap-2.25 py-3">
             {alerts.map((a) => (
-              <div key={a.id} className="flex items-start gap-2.5 rounded-[10px] border border-border bg-[var(--card2)] p-2.75">
+              <div key={a.id} className="flex items-start gap-2.5 rounded-[10px] border border-border bg-(--card2) p-2.75">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-1.75">
                     <span className="mono text-[10px] font-bold tracking-wider uppercase" data-delta={a.tone}>
@@ -162,20 +162,20 @@ export function DashboardScreen({
                     </span>
                     <span className="text-xs font-semibold">{a.title}</span>
                   </div>
-                  <div className="text-xs leading-relaxed text-[var(--fg2)]">{a.body}</div>
+                  <div className="text-xs leading-relaxed text-(--fg2)">{a.body}</div>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => onDismissAlert(a.id)}
-                  className="text-[var(--fg3)]"
+                  className="text-(--fg3)"
                 >
                   <X className="size-3.5" />
                 </Button>
               </div>
             ))}
             {alerts.length === 0 ? (
-              <div className="p-4.5 text-center text-xs text-[var(--fg3)]">All clear. Nothing needs your attention.</div>
+              <div className="p-4.5 text-center text-xs text-(--fg3)">All clear. Nothing needs your attention.</div>
             ) : null}
           </CardContent>
         </Card>

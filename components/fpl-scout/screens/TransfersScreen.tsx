@@ -10,7 +10,7 @@ export function TransfersScreen({ transfers }: { transfers: TransferSectionView[
   if (transfers.length === 0) {
     return (
       <div className="p-5.5">
-        <Card className="rounded-xl border-border p-6 text-center text-[13px] text-[var(--fg3)]">
+        <Card className="rounded-xl border-border p-6 text-center text-[13px] text-(--fg3)">
           No transfer suggestions right now — your squad looks efficient for its price.
         </Card>
       </div>
@@ -24,9 +24,9 @@ export function TransfersScreen({ transfers }: { transfers: TransferSectionView[
           <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border py-4">
             <div>
               <div className="text-sm font-semibold">Replace {t.outName}</div>
-              <div className="mt-0.5 text-xs text-[var(--fg2)]">{t.rationale}</div>
+              <div className="mt-0.5 text-xs text-(--fg2)">{t.rationale}</div>
             </div>
-            <Badge variant="outline" className="mono rounded-full border-border bg-muted px-2.25 py-0.75 text-[11px] font-normal text-[var(--fg2)]">
+            <Badge variant="outline" className="mono rounded-full border-border bg-muted px-2.25 py-0.75 text-[11px] font-normal text-(--fg2)">
               {t.bank} in bank
             </Badge>
           </CardHeader>
@@ -40,7 +40,7 @@ export function TransfersScreen({ transfers }: { transfers: TransferSectionView[
                       {c.tag}
                     </span>
                   </div>
-                  <div className="mono mt-1 text-[11px] text-[var(--fg3)]">
+                  <div className="mono mt-1 text-[11px] text-(--fg3)">
                     {c.team} · {c.pos} · £{c.price}m
                   </div>
                 </div>
@@ -48,7 +48,7 @@ export function TransfersScreen({ transfers }: { transfers: TransferSectionView[
                   <TableBody>
                     {c.stats.map((s) => (
                       <TableRow key={s.k} className="border-border hover:bg-transparent">
-                        <TableCell className="px-3.5 py-1.75 text-[var(--fg3)]">{s.k}</TableCell>
+                        <TableCell className="px-3.5 py-1.75 text-(--fg3)">{s.k}</TableCell>
                         <TableCell className="mono px-3.5 py-1.75 text-right font-semibold" data-delta={s.dir}>
                           {s.v}
                         </TableCell>
@@ -57,7 +57,7 @@ export function TransfersScreen({ transfers }: { transfers: TransferSectionView[
                   </TableBody>
                 </Table>
                 <div className="flex flex-col gap-2 p-3.5">
-                  <div className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">Next 5</div>
+                  <div className="text-[10px] tracking-wider text-(--fg3) uppercase">Next 5</div>
                   <div className="flex gap-1">
                     {c.next.map((f, i) => (
                       <span key={i} data-d={f.d} className="h-5.5 flex-1">

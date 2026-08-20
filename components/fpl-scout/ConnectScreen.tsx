@@ -47,7 +47,7 @@ export function ConnectScreen({
           </CardHeader>
           <CardContent className="flex flex-col gap-3.5 py-4.5">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="team-id" className="text-[10px] font-normal tracking-wider text-[var(--fg3)] uppercase">
+              <Label htmlFor="team-id" className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase">
                 Team ID
               </Label>
               <Input
@@ -58,6 +58,9 @@ export function ConnectScreen({
                 onKeyDown={onEntryKeyDown}
                 placeholder="e.g. 3842106"
                 inputMode="numeric"
+                // base-ui's Input primitive sets caret-color on the client only
+                // (to draw its own caret) — an expected, benign SSR mismatch.
+                suppressHydrationWarning
               />
               {entryError ? (
                 <span data-delta="down" className="text-xs">
@@ -66,7 +69,7 @@ export function ConnectScreen({
               ) : null}
               {recentTeamIds.length > 0 ? (
                 <div className="mt-0.5 flex flex-col gap-1.5">
-                  <span className="text-[10px] font-normal tracking-wider text-[var(--fg3)] uppercase">Recent teams</span>
+                  <span className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase">Recent teams</span>
                   <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-muted">
                     {recentTeamIds.map((id) => (
                       <div key={id} className="flex items-center">
@@ -82,7 +85,7 @@ export function ConnectScreen({
                           size="icon-sm"
                           onClick={() => onRemoveRecent(id)}
                           aria-label={`Remove ${id} from recent teams`}
-                          className="mr-1.5 rounded-md text-[var(--fg3)]"
+                          className="mr-1.5 rounded-md text-(--fg3)"
                         >
                           <X className="size-3.5" />
                         </Button>
@@ -96,9 +99,9 @@ export function ConnectScreen({
               {connectLabel}
             </Button>
             <div className="h-px bg-border" />
-            <div className="text-xs leading-relaxed text-[var(--fg3)]">
+            <div className="text-xs leading-relaxed text-(--fg3)">
               Find it in the URL of your points page on the official site:{' '}
-              <span className="mono text-[var(--fg2)]">/entry/&lt;your-id&gt;/event/3</span>. Scout only reads public
+              <span className="mono text-(--fg2)">/entry/&lt;your-id&gt;/event/3</span>. Scout only reads public
               data.
             </div>
           </CardContent>

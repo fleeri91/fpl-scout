@@ -1,12 +1,39 @@
 import type {
   Bootstrap,
   ChipName,
+  ElementTypes,
   Element as FplRawElement,
   EntryHistory,
   Event as FplEvent,
   Fixture,
+  Team,
 } from 'fpl-api'
 import type { Delta, FixtureCell, PlayerStatus, Player, Position } from './types'
+
+// `getTeamShortName`/`getElementTypeLabel` are called per-fixture and
+// per-element (hundreds to thousands of times per bootstrap payload).
+// Index the lookup tables once per `bootstrap` reference instead of doing
+// a linear .find() on every call.
+const teamIndexCache = new WeakMap<Bootstrap, Map<number, Team>>()
+const elementTypeIndexCache = new WeakMap<Bootstrap, Map<number, ElementTypes>>()
+
+function teamsById(bootstrap: Bootstrap): Map<number, Team> {
+  let index = teamIndexCache.get(bootstrap)
+  if (!index) {
+    index = new Map(bootstrap.teams.map((t) => [t.id, t]))
+    teamIndexCache.set(bootstrap, index)
+  }
+  return index
+}
+
+function elementTypesById(bootstrap: Bootstrap): Map<number, ElementTypes> {
+  let index = elementTypeIndexCache.get(bootstrap)
+  if (!index) {
+    index = new Map(bootstrap.element_types.map((t) => [t.id, t]))
+    elementTypeIndexCache.set(bootstrap, index)
+  }
+  return index
+}
 
 // fpl-api's typed Element doesn't declare these, but the live API returns
 // them (as numeric strings, same convention as form/creativity/etc).
@@ -29,12 +56,12 @@ function statusToPlayerStatus(status: FplElement['status']): PlayerStatus {
 }
 
 export function getElementTypeLabel(bootstrap: Bootstrap, elementTypeId: number): Position {
-  const et = bootstrap.element_types.find((t) => t.id === elementTypeId)
+  const et = elementTypesById(bootstrap).get(elementTypeId)
   return (et?.singular_name_short as Position) ?? 'MID'
 }
 
 export function getTeamShortName(bootstrap: Bootstrap, teamId: number): string {
-  return bootstrap.teams.find((t) => t.id === teamId)?.short_name ?? '???'
+  return teamsById(bootstrap).get(teamId)?.short_name ?? '???'
 }
 
 export function getCurrentEvent(bootstrap: Bootstrap): FplEvent | undefined {
