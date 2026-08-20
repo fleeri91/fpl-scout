@@ -19,7 +19,7 @@ export function Header({
   onDisconnect: () => void
 }) {
   return (
-    <header className="border-border bg-card sticky top-0 z-20 flex min-h-[57px] items-center justify-between gap-4 border-b px-5.5">
+    <header className="border-border bg-card sticky top-0 z-20 flex min-h-14.25 items-center justify-between gap-4 border-b px-5.5">
       <div className="flex items-baseline gap-2.5">
         <h1 className="m-0 text-[15px] font-semibold tracking-tight">
           {title}

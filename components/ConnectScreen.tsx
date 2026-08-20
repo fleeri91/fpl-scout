@@ -36,9 +36,9 @@ export function ConnectScreen({
 }) {
   return (
     <div className="grid min-h-screen place-items-center p-6">
-      <div className="flex w-full max-w-[430px] flex-col gap-4.5">
+      <div className="flex w-full max-w-107.5 flex-col gap-4.5">
         <div className="flex items-center gap-2.5">
-          <div className="bg-primary text-primary-foreground flex size-[30px] items-center justify-center rounded-lg text-sm font-extrabold">
+          <div className="bg-primary text-primary-foreground flex size-7.5 items-center justify-center rounded-lg text-sm font-extrabold">
             FS
           </div>
           <div className="text-base font-semibold tracking-tight">

@@ -139,7 +139,7 @@ export function ExplorerScreen({
             value={filters.team}
             onValueChange={(v) => v != null && onFiltersChange({ team: v })}
           >
-            <SelectTrigger className="border-border bg-muted min-w-[150px] rounded-lg text-xs">
+            <SelectTrigger className="border-border bg-muted min-w-37.5 rounded-lg text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -151,7 +151,7 @@ export function ExplorerScreen({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex min-w-[190px] flex-col gap-2">
+        <div className="flex min-w-47.5 flex-col gap-2">
           <span className="text-[10px] tracking-wider text-(--fg3) uppercase">
             Max price · £{filters.maxPrice.toFixed(1)}m
           </span>
@@ -165,7 +165,7 @@ export function ExplorerScreen({
             }
           />
         </div>
-        <div className="flex min-w-[190px] flex-col gap-2">
+        <div className="flex min-w-47.5 flex-col gap-2">
           <span className="text-[10px] tracking-wider text-(--fg3) uppercase">
             Max ownership · {filters.maxOwn}%
           </span>

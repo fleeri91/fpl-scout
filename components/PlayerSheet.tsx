@@ -53,7 +53,7 @@ export function PlayerSheet({
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="border-border w-[420px] gap-0 overflow-y-auto sm:max-w-[420px]">
+      <SheetContent className="border-border w-105 gap-0 overflow-y-auto sm:max-w-105">
         <SheetHeader className="border-border gap-1 border-b p-4.5 pr-10">
           <SheetTitle className="flex items-center gap-2.25 text-[19px] font-bold tracking-tight">
             <i data-status={player.status} className="size-2 rounded-full" />
