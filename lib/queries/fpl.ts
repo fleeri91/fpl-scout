@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import type {
   Bootstrap,
   ClassicLeague,
@@ -163,6 +163,16 @@ export function useH2HLeague(
       )
     },
     enabled: Number.isFinite(leagueId),
+  })
+}
+
+export function useElementSummaries(elementIds: number[]) {
+  return useQueries({
+    queries: elementIds.map((id) => ({
+      queryKey: fplKeys.elementSummary(id),
+      queryFn: () => fetchJson<ElementSummary>(`/api/fpl/element-summary/${id}`),
+      staleTime: 5 * 60 * 1000,
+    })),
   })
 }
 
