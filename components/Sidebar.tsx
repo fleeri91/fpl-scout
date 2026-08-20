@@ -44,11 +44,11 @@ export function Sidebar({
     <aside
       className={cn(
         'border-border bg-card sticky top-0 flex h-screen flex-0 flex-col border-r transition-[width] duration-[.18s] ease-out',
-        navOpen ? 'w-[212px]' : 'w-[62px]'
+        navOpen ? 'w-53' : 'w-15.5'
       )}
     >
-      <div className="border-border flex min-h-[57px] items-center gap-2.5 border-b px-3.5 py-4">
-        <div className="bg-primary text-primary-foreground flex size-[30px] items-center justify-center rounded-lg text-sm font-extrabold">
+      <div className="border-border flex min-h-14.25 items-center gap-2.5 border-b px-3.5 py-4">
+        <div className="bg-primary text-primary-foreground flex size-7.5 items-center justify-center rounded-lg text-sm font-extrabold">
           FS
         </div>
         {navOpen ? (
@@ -75,7 +75,7 @@ export function Sidebar({
                   : 'border-transparent text-(--fg2)'
               )}
             >
-              <Icon className="size-[15px] shrink-0 opacity-90" />
+              <Icon className="size-3.75 shrink-0 opacity-90" />
               {navOpen ? (
                 <span className="whitespace-nowrap">{item.label}</span>
               ) : null}

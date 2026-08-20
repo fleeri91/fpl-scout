@@ -1,6 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import {
   useBootstrap,
   useElementSummaries,
@@ -26,10 +32,17 @@ import {
   mapElementToPlayer,
   type FplElement,
 } from '@/components/mapFplData'
-import { addRecentTeamId, removeRecentTeamId, useRecentTeamIds } from '@/components/recentTeams'
+import {
+  addRecentTeamId,
+  removeRecentTeamId,
+  useRecentTeamIds,
+} from '@/components/recentTeams'
 import { ChipsScreen } from '@/components/screens/ChipsScreen'
 import { DashboardScreen } from '@/components/screens/DashboardScreen'
-import { ExplorerScreen, type ExplorerFilters } from '@/components/screens/ExplorerScreen'
+import {
+  ExplorerScreen,
+  type ExplorerFilters,
+} from '@/components/screens/ExplorerScreen'
 import { FixturesScreen } from '@/components/screens/FixturesScreen'
 import { TransfersScreen } from '@/components/screens/TransfersScreen'
 import type { Player, Screen } from '@/components/types'
@@ -38,12 +51,22 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
-function StatusShell({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
+function StatusShell({
+  title,
+  body,
+  action,
+}: {
+  title: string
+  body: string
+  action?: ReactNode
+}) {
   return (
     <div className="grid min-h-screen place-items-center p-6">
-      <Card className="w-full max-w-[430px] rounded-xl border-border p-5.5">
+      <Card className="border-border w-full max-w-[430px] rounded-xl p-5.5">
         <div className="text-base font-semibold tracking-tight">{title}</div>
-        <div className="mt-2 text-[12.5px] leading-relaxed text-(--fg2)">{body}</div>
+        <div className="mt-2 text-[12.5px] leading-relaxed text-(--fg2)">
+          {body}
+        </div>
         {action ? <div className="mt-4">{action}</div> : null}
       </Card>
     </div>
@@ -98,15 +121,22 @@ export default function Home() {
   const entryHistoryQuery = useEntryHistory(numericTeamId)
   const fixturesQuery = useFixtures()
 
-  const currentEvent = bootstrapQuery.data ? getCurrentEvent(bootstrapQuery.data) : undefined
+  const currentEvent = bootstrapQuery.data
+    ? getCurrentEvent(bootstrapQuery.data)
+    : undefined
   const entryEventQuery = useEntryEvent(numericTeamId, currentEvent?.id ?? NaN)
 
-  const squadElementIds = useMemo(() => entryEventQuery.data?.picks.map((p) => p.element) ?? [], [entryEventQuery.data])
+  const squadElementIds = useMemo(
+    () => entryEventQuery.data?.picks.map((p) => p.element) ?? [],
+    [entryEventQuery.data]
+  )
   const summaries = useElementSummaries(squadElementIds)
   const histByElementId = useMemo(() => {
     const map: Record<number, number[]> = {}
     squadElementIds.forEach((id, i) => {
-      map[id] = (summaries[i]?.data?.history ?? []).slice(-5).map((h) => h.total_points)
+      map[id] = (summaries[i]?.data?.history ?? [])
+        .slice(-5)
+        .map((h) => h.total_points)
     })
     return map
   }, [squadElementIds, summaries])
@@ -144,19 +174,41 @@ export default function Home() {
 
   const allPlayers = useMemo<Player[]>(() => {
     if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent) return []
-    const fixturesByTeamId = buildFixturesByTeamId(bootstrapQuery.data, fixturesQuery.data, currentEvent.id, 6)
+    const fixturesByTeamId = buildFixturesByTeamId(
+      bootstrapQuery.data,
+      fixturesQuery.data,
+      currentEvent.id,
+      6
+    )
     return (bootstrapQuery.data.elements as FplElement[]).map((el) =>
-      mapElementToPlayer(el, bootstrapQuery.data!, fixturesByTeamId, histByElementId[el.id] ?? [])
+      mapElementToPlayer(
+        el,
+        bootstrapQuery.data!,
+        fixturesByTeamId,
+        histByElementId[el.id] ?? []
+      )
     )
   }, [bootstrapQuery.data, fixturesQuery.data, currentEvent, histByElementId])
 
-  const playersById = useMemo(() => new Map(allPlayers.map((p) => [p.id, p])), [allPlayers])
+  const playersById = useMemo(
+    () => new Map(allPlayers.map((p) => [p.id, p])),
+    [allPlayers]
+  )
 
-  const teams = useMemo(() => bootstrapQuery.data?.teams.map((t) => t.short_name) ?? [], [bootstrapQuery.data])
+  const teams = useMemo(
+    () => bootstrapQuery.data?.teams.map((t) => t.short_name) ?? [],
+    [bootstrapQuery.data]
+  )
 
   const fixturePlanner = useMemo(() => {
-    if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent) return { gws: [], matrix: [], bestWindows: [] }
-    return computeFixturePlanner(bootstrapQuery.data, fixturesQuery.data, currentEvent.id, 6)
+    if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent)
+      return { gws: [], matrix: [], bestWindows: [] }
+    return computeFixturePlanner(
+      bootstrapQuery.data,
+      fixturesQuery.data,
+      currentEvent.id,
+      6
+    )
   }, [bootstrapQuery.data, fixturesQuery.data, currentEvent])
 
   const xi = useMemo(() => {
@@ -180,21 +232,37 @@ export default function Home() {
   const alerts = useMemo(() => {
     if (!bootstrapQuery.data || !entryEventQuery.data) return []
     const squadIds = new Set(entryEventQuery.data.picks.map((p) => p.element))
-    const squadElements = (bootstrapQuery.data.elements as FplElement[]).filter((el) => squadIds.has(el.id))
+    const squadElements = (bootstrapQuery.data.elements as FplElement[]).filter(
+      (el) => squadIds.has(el.id)
+    )
     return buildAlerts(squadElements).filter((a) => !dismissed.includes(a.id))
   }, [bootstrapQuery.data, entryEventQuery.data, dismissed])
 
-  const chips = useMemo(() => buildChipStatus(entryHistoryQuery.data), [entryHistoryQuery.data])
+  const chips = useMemo(
+    () => buildChipStatus(entryHistoryQuery.data),
+    [entryHistoryQuery.data]
+  )
 
   const bankM = (entryEventQuery.data?.entry_history.bank ?? 0) / 10
   const valueM = (entryEventQuery.data?.entry_history.value ?? 0) / 10
-  const eventTransfers = entryEventQuery.data?.entry_history.event_transfers ?? 0
-  const overallRank = entryEventQuery.data?.entry_history.overall_rank ?? entryQuery.data?.summary_overall_rank ?? null
+  const eventTransfers =
+    entryEventQuery.data?.entry_history.event_transfers ?? 0
+  const overallRank =
+    entryEventQuery.data?.entry_history.overall_rank ??
+    entryQuery.data?.summary_overall_rank ??
+    null
 
   const rankHistory = entryHistoryQuery.data?.current
-  const rankCur = rankHistory && currentEvent ? rankHistory.find((c) => c.event === currentEvent.id) : undefined
-  const rankPrev = rankHistory && currentEvent ? rankHistory.find((c) => c.event === currentEvent.id - 1) : undefined
-  const rankDelta = rankCur && rankPrev ? rankPrev.overall_rank - rankCur.overall_rank : null
+  const rankCur =
+    rankHistory && currentEvent
+      ? rankHistory.find((c) => c.event === currentEvent.id)
+      : undefined
+  const rankPrev =
+    rankHistory && currentEvent
+      ? rankHistory.find((c) => c.event === currentEvent.id - 1)
+      : undefined
+  const rankDelta =
+    rankCur && rankPrev ? rankPrev.overall_rank - rankCur.overall_rank : null
   const rankNote =
     rankDelta === null
       ? '—'
@@ -206,18 +274,26 @@ export default function Home() {
 
   const transfers = useMemo(() => {
     if (xi.length === 0 || allPlayers.length === 0) return []
-    const squadIds = new Set(entryEventQuery.data?.picks.map((p) => p.element) ?? [])
+    const squadIds = new Set(
+      entryEventQuery.data?.picks.map((p) => p.element) ?? []
+    )
     return buildTransferSuggestions(xi, allPlayers, squadIds, bankM)
   }, [xi, allPlayers, entryEventQuery.data, bankM])
 
   const seasonLabel = useMemo(() => {
     if (!bootstrapQuery.data?.events.length) return ''
-    const firstYear = new Date(bootstrapQuery.data.events[0].deadline_time).getFullYear()
+    const firstYear = new Date(
+      bootstrapQuery.data.events[0].deadline_time
+    ).getFullYear()
     return `${firstYear}/${String(firstYear + 1).slice(-2)}`
   }, [bootstrapQuery.data])
 
-  const deadlineMs = currentEvent ? new Date(currentEvent.deadline_time).getTime() : null
-  const diffSecs = deadlineMs ? Math.max(0, Math.floor((deadlineMs - now) / 1000)) : 0
+  const deadlineMs = currentEvent
+    ? new Date(currentEvent.deadline_time).getTime()
+    : null
+  const diffSecs = deadlineMs
+    ? Math.max(0, Math.floor((deadlineMs - now) / 1000))
+    : 0
   const d = Math.floor(diffSecs / 86400)
   const hh = Math.floor((diffSecs % 86400) / 3600)
   const mm = Math.floor((diffSecs % 3600) / 60)
@@ -232,10 +308,15 @@ export default function Home() {
 
   const titles: Record<Screen, [string, string]> = {
     dash: ['Dashboard', 'Your squad at a glance'],
-    explorer: ['Player Explorer', `${allPlayers.length} players · season stats`],
+    explorer: [
+      'Player Explorer',
+      `${allPlayers.length} players · season stats`,
+    ],
     fixtures: [
       'Fixture Planner',
-      fixturePlanner.gws.length ? `${fixturePlanner.gws[0]} – ${fixturePlanner.gws[fixturePlanner.gws.length - 1]} difficulty matrix` : '',
+      fixturePlanner.gws.length
+        ? `${fixturePlanner.gws[0]} – ${fixturePlanner.gws[fixturePlanner.gws.length - 1]} difficulty matrix`
+        : '',
     ],
     chips: ['Chip Strategy', 'Usage this season'],
     transfers: ['Transfer Suggestions', 'Ranked by xGI per million'],
@@ -269,7 +350,10 @@ export default function Home() {
           title="Team not found"
           body="Scout couldn't find an FPL team with that ID. Double-check it and try again."
           action={
-            <Button onClick={backToConnect} className="h-auto rounded-lg px-3.5 py-2.25 text-[13px] font-semibold">
+            <Button
+              onClick={backToConnect}
+              className="h-auto rounded-lg px-3.5 py-2.25 text-[13px] font-semibold"
+            >
               Try again
             </Button>
           }
@@ -278,7 +362,8 @@ export default function Home() {
     )
   }
 
-  const anyError = bootstrapQuery.isError || entryHistoryQuery.isError || fixturesQuery.isError
+  const anyError =
+    bootstrapQuery.isError || entryHistoryQuery.isError || fixturesQuery.isError
   if (anyError) {
     return (
       <div className="fpl-scout min-h-screen" data-theme="dark">
@@ -286,7 +371,10 @@ export default function Home() {
           title="Couldn't load that team"
           body="This team ID is valid, but Scout couldn't load its history right now. The FPL API may be temporarily unavailable."
           action={
-            <Button onClick={disconnect} className="h-auto rounded-lg px-3.5 py-2.25 text-[13px] font-semibold">
+            <Button
+              onClick={disconnect}
+              className="h-auto rounded-lg px-3.5 py-2.25 text-[13px] font-semibold"
+            >
               Try a different team
             </Button>
           }
@@ -295,11 +383,19 @@ export default function Home() {
     )
   }
 
-  const allReady = bootstrapQuery.data && entryQuery.data && entryHistoryQuery.data && fixturesQuery.data && currentEvent
+  const allReady =
+    bootstrapQuery.data &&
+    entryQuery.data &&
+    entryHistoryQuery.data &&
+    fixturesQuery.data &&
+    currentEvent
   if (!allReady) {
     return (
       <div className="fpl-scout min-h-screen" data-theme="dark">
-        <StatusShell title="Fetching squad…" body="Pulling your team, gameweek picks and fixtures from the FPL API." />
+        <StatusShell
+          title="Fetching squad…"
+          body="Pulling your team, gameweek picks and fixtures from the FPL API."
+        />
       </div>
     )
   }
@@ -309,26 +405,54 @@ export default function Home() {
   const picksAvailable = !!entryEventQuery.data
   const picksUnavailableNotice = (
     <div className="p-5.5">
-      <Card className="rounded-xl border-border p-6 text-center text-[13px] leading-relaxed text-(--fg2)">
-        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API only exposes a gameweek&apos;s squad once its
-        deadline has passed. Check back after {new Date(currentEvent.deadline_time).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}.
+      <Card className="border-border rounded-xl p-6 text-center text-[13px] leading-relaxed text-(--fg2)">
+        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API only
+        exposes a gameweek&apos;s squad once its deadline has passed. Check back
+        after{' '}
+        {new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+        .
       </Card>
     </div>
   )
 
   const summary = [
-    { label: 'Squad value', value: `£${valueM.toFixed(1)}m`, note: `GW${currentEvent.id}`, dir: 'flat' as const },
+    {
+      label: 'Squad value',
+      value: `£${valueM.toFixed(1)}m`,
+      note: `GW${currentEvent.id}`,
+      dir: 'flat' as const,
+    },
     {
       label: 'In the bank',
       value: `£${bankM.toFixed(1)}m`,
-      note: eventTransfers === 0 ? 'No transfers made' : `${eventTransfers} transfer${eventTransfers > 1 ? 's' : ''} made`,
+      note:
+        eventTransfers === 0
+          ? 'No transfers made'
+          : `${eventTransfers} transfer${eventTransfers > 1 ? 's' : ''} made`,
       dir: 'flat' as const,
     },
-    { label: 'Overall rank', value: overallRank ? overallRank.toLocaleString('en-GB') : '—', note: rankNote, dir: rankNote.startsWith('▲') ? ('up' as const) : rankNote.startsWith('▼') ? ('down' as const) : ('flat' as const) },
+    {
+      label: 'Overall rank',
+      value: overallRank ? overallRank.toLocaleString('en-GB') : '—',
+      note: rankNote,
+      dir: rankNote.startsWith('▲')
+        ? ('up' as const)
+        : rankNote.startsWith('▼')
+          ? ('down' as const)
+          : ('flat' as const),
+    },
     {
       label: `GW${currentEvent.id} deadline`,
       value: `${d}d ${pad(hh)}h`,
-      note: new Date(currentEvent.deadline_time).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }),
+      note: new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
       dir: 'flat' as const,
     },
   ]
@@ -376,22 +500,48 @@ export default function Home() {
               players={allPlayers}
               teams={teams}
               filters={filters}
-              onFiltersChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
-              onSort={(key) =>
-                setFilters((f) => (f.sortKey === key ? { ...f, sortDir: f.sortDir === 1 ? -1 : 1 } : { ...f, sortKey: key, sortDir: -1 }))
+              onFiltersChange={(patch) =>
+                setFilters((f) => ({ ...f, ...patch }))
               }
-              onReset={() => setFilters({ pos: 'All', team: 'All teams', maxPrice: 15, maxOwn: 60, sortKey: 'xgi', sortDir: -1 })}
+              onSort={(key) =>
+                setFilters((f) =>
+                  f.sortKey === key
+                    ? { ...f, sortDir: f.sortDir === 1 ? -1 : 1 }
+                    : { ...f, sortKey: key, sortDir: -1 }
+                )
+              }
+              onReset={() =>
+                setFilters({
+                  pos: 'All',
+                  team: 'All teams',
+                  maxPrice: 15,
+                  maxOwn: 60,
+                  sortKey: 'xgi',
+                  sortDir: -1,
+                })
+              }
               onOpenPlayer={setSelectedId}
             />
           )}
           {screen === 'fixtures' && (
-            <FixturesScreen gws={fixturePlanner.gws} matrix={fixturePlanner.matrix} bestWindows={fixturePlanner.bestWindows} />
+            <FixturesScreen
+              gws={fixturePlanner.gws}
+              matrix={fixturePlanner.matrix}
+              bestWindows={fixturePlanner.bestWindows}
+            />
           )}
           {screen === 'chips' && <ChipsScreen chips={chips} />}
-          {screen === 'transfers' && (picksAvailable ? <TransfersScreen transfers={transfers} /> : picksUnavailableNotice)}
+          {screen === 'transfers' &&
+            (picksAvailable ? (
+              <TransfersScreen transfers={transfers} />
+            ) : (
+              picksUnavailableNotice
+            ))}
         </main>
 
-        {sel ? <PlayerSheet player={sel} onClose={() => setSelectedId(null)} /> : null}
+        {sel ? (
+          <PlayerSheet player={sel} onClose={() => setSelectedId(null)} />
+        ) : null}
       </div>
     </div>
   )

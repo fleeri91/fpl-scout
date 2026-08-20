@@ -8,14 +8,23 @@ import type {
   Fixture,
   Team,
 } from 'fpl-api'
-import type { Delta, FixtureCell, PlayerStatus, Player, Position } from './types'
+import type {
+  Delta,
+  FixtureCell,
+  PlayerStatus,
+  Player,
+  Position,
+} from './types'
 
 // `getTeamShortName`/`getElementTypeLabel` are called per-fixture and
 // per-element (hundreds to thousands of times per bootstrap payload).
 // Index the lookup tables once per `bootstrap` reference instead of doing
 // a linear .find() on every call.
 const teamIndexCache = new WeakMap<Bootstrap, Map<number, Team>>()
-const elementTypeIndexCache = new WeakMap<Bootstrap, Map<number, ElementTypes>>()
+const elementTypeIndexCache = new WeakMap<
+  Bootstrap,
+  Map<number, ElementTypes>
+>()
 
 function teamsById(bootstrap: Bootstrap): Map<number, Team> {
   let index = teamIndexCache.get(bootstrap)
@@ -55,7 +64,10 @@ function statusToPlayerStatus(status: FplElement['status']): PlayerStatus {
   return 'out'
 }
 
-export function getElementTypeLabel(bootstrap: Bootstrap, elementTypeId: number): Position {
+export function getElementTypeLabel(
+  bootstrap: Bootstrap,
+  elementTypeId: number
+): Position {
   const et = elementTypesById(bootstrap).get(elementTypeId)
   return (et?.singular_name_short as Position) ?? 'MID'
 }
@@ -89,10 +101,18 @@ export function buildFixturesByTeamId(
     const homeOpp = getTeamShortName(bootstrap, f.team_a)
     const awayOpp = getTeamShortName(bootstrap, f.team_h).toLowerCase()
     if (byTeamId[f.team_h] && byTeamId[f.team_h].length < count) {
-      byTeamId[f.team_h].push({ opp: homeOpp, label: homeOpp, d: f.team_h_difficulty })
+      byTeamId[f.team_h].push({
+        opp: homeOpp,
+        label: homeOpp,
+        d: f.team_h_difficulty,
+      })
     }
     if (byTeamId[f.team_a] && byTeamId[f.team_a].length < count) {
-      byTeamId[f.team_a].push({ opp: awayOpp, label: awayOpp, d: f.team_a_difficulty })
+      byTeamId[f.team_a].push({
+        opp: awayOpp,
+        label: awayOpp,
+        d: f.team_a_difficulty,
+      })
     }
   }
   return byTeamId
@@ -152,7 +172,12 @@ export function computeFixturePlanner(
   fromEventId: number,
   count = 6
 ): { gws: string[]; matrix: FixturePlannerRow[]; bestWindows: BestWindow[] } {
-  const byTeamId = buildFixturesByTeamId(bootstrap, fixtures, fromEventId, count)
+  const byTeamId = buildFixturesByTeamId(
+    bootstrap,
+    fixtures,
+    fromEventId,
+    count
+  )
   const gws = Array.from({ length: count }, (_, i) => `GW${fromEventId + i}`)
 
   const windows = bootstrap.teams.map((team) => {
@@ -162,8 +187,16 @@ export function computeFixturePlanner(
       const avg = (cells[i].d + cells[i + 1].d + cells[i + 2].d) / 3
       if (avg < best.avg) best = { i, avg }
     }
-    const overall = cells.length ? cells.reduce((s, c) => s + c.d, 0) / cells.length : 0
-    return { team: team.short_name, start: best.i, avg: best.avg, cells, overall }
+    const overall = cells.length
+      ? cells.reduce((s, c) => s + c.d, 0) / cells.length
+      : 0
+    return {
+      team: team.short_name,
+      start: best.i,
+      avg: best.avg,
+      cells,
+      overall,
+    }
   })
 
   const topFour = [...windows]
@@ -176,7 +209,10 @@ export function computeFixturePlanner(
     avg: w.overall.toFixed(1),
     cells: w.cells.map((c, i) => ({
       ...c,
-      ring: topFour.includes(w.team) && i >= w.start && i < w.start + 3 ? '2px solid var(--accent)' : 'none',
+      ring:
+        topFour.includes(w.team) && i >= w.start && i < w.start + 3
+          ? '2px solid var(--accent)'
+          : 'none',
     })),
   }))
 
@@ -231,7 +267,13 @@ export function buildAlerts(squad: FplElement[]): AlertItem[] {
     }
     if (el.status !== 'a') {
       const label =
-        el.status === 'd' ? 'Doubtful' : el.status === 'i' ? 'Injury' : el.status === 's' ? 'Suspended' : 'Unavailable'
+        el.status === 'd'
+          ? 'Doubtful'
+          : el.status === 'i'
+            ? 'Injury'
+            : el.status === 's'
+              ? 'Suspended'
+              : 'Unavailable'
       alerts.push({
         id: `status-${el.id}`,
         kind: label,
@@ -262,15 +304,20 @@ const CHIP_LABELS: Record<ChipName, string> = {
   '3xc': 'Triple Captain',
 }
 
-export function buildChipStatus(history: EntryHistory | undefined): ChipCardView[] {
+export function buildChipStatus(
+  history: EntryHistory | undefined
+): ChipCardView[] {
   const used = history?.chips ?? []
   return (Object.keys(CHIP_LABELS) as ChipName[]).map((key) => {
     const plays = used.filter((c) => c.name === key)
     const unused = plays.length === 0
     return {
       name: CHIP_LABELS[key],
-      availability: key === 'wildcard' ? 'Up to two per season' : 'One per season',
-      status: unused ? 'Unused' : plays.map((p) => `Used GW${p.event}`).join(', '),
+      availability:
+        key === 'wildcard' ? 'Up to two per season' : 'One per season',
+      status: unused
+        ? 'Unused'
+        : plays.map((p) => `Used GW${p.event}`).join(', '),
       badgeBg: unused ? 'var(--muted)' : 'transparent',
       badgeBorder: 'var(--border)',
       badgeFg: unused ? 'var(--fg2)' : 'var(--fg3)',
@@ -332,7 +379,13 @@ export function buildTransferSuggestions(
   return worst.map((o) => {
     const budget = o.price + bankM
     const alternatives = allPlayers
-      .filter((p) => p.pos === o.pos && !squadIds.has(p.id) && p.price <= budget && p.status === 'ok')
+      .filter(
+        (p) =>
+          p.pos === o.pos &&
+          !squadIds.has(p.id) &&
+          p.price <= budget &&
+          p.status === 'ok'
+      )
       .sort((a, b) => b.xgi - a.xgi)
       .slice(0, 3)
 
@@ -380,12 +433,32 @@ export function buildTransferSuggestions(
         ctaBorder: rec ? 'var(--accent)' : 'var(--border)',
         ctaFg: rec ? 'var(--accent-fg)' : 'var(--fg2)',
         stats: [
-          { k: 'xGI / 90', v: xgiPer90(p).toFixed(2), dir: dX > 0 ? 'up' : 'down' },
-          { k: 'Price delta', v: (dP > 0 ? '+' : '') + dP.toFixed(1) + 'm', dir: dP < 0 ? 'up' : 'flat' },
-          { k: 'xGI delta', v: (dX > 0 ? '+' : '') + dX.toFixed(2), dir: dX > 0 ? 'up' : 'down' },
-          { k: 'Form', v: p.form.toFixed(1), dir: p.form > o.form ? 'up' : 'down' },
+          {
+            k: 'xGI / 90',
+            v: xgiPer90(p).toFixed(2),
+            dir: dX > 0 ? 'up' : 'down',
+          },
+          {
+            k: 'Price delta',
+            v: (dP > 0 ? '+' : '') + dP.toFixed(1) + 'm',
+            dir: dP < 0 ? 'up' : 'flat',
+          },
+          {
+            k: 'xGI delta',
+            v: (dX > 0 ? '+' : '') + dX.toFixed(2),
+            dir: dX > 0 ? 'up' : 'down',
+          },
+          {
+            k: 'Form',
+            v: p.form.toFixed(1),
+            dir: p.form > o.form ? 'up' : 'down',
+          },
           { k: 'Ownership', v: p.own.toFixed(1) + '%', dir: 'flat' },
-          { k: 'Next 5 avg FDR', v: fdr.toFixed(1), dir: fdr < oFdr ? 'up' : 'down' },
+          {
+            k: 'Next 5 avg FDR',
+            v: fdr.toFixed(1),
+            dir: fdr < oFdr ? 'up' : 'down',
+          },
         ],
         next: p.next,
       }

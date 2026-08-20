@@ -21,7 +21,9 @@ function readList(): string[] {
   cachedRaw = raw
   try {
     const parsed: unknown = raw ? JSON.parse(raw) : []
-    cachedList = Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
+    cachedList = Array.isArray(parsed)
+      ? parsed.filter((v): v is string => typeof v === 'string')
+      : []
   } catch {
     cachedList = []
   }

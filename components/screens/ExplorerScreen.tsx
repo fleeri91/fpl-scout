@@ -4,13 +4,37 @@ import { useDeferredValue, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import type { Player, Position } from '../types'
 
-type SortKey = 'name' | 'team' | 'pos' | 'price' | 'priceMove' | 'own' | 'form' | 'xg' | 'xa' | 'xgi' | 'mins'
+type SortKey =
+  | 'name'
+  | 'team'
+  | 'pos'
+  | 'price'
+  | 'priceMove'
+  | 'own'
+  | 'form'
+  | 'xg'
+  | 'xa'
+  | 'xgi'
+  | 'mins'
 
 const POS_FILTERS: (Position | 'All')[] = ['All', 'GKP', 'DEF', 'MID', 'FWD']
 
@@ -63,7 +87,8 @@ export function ExplorerScreen({
     const filtered = players.filter(
       (p) =>
         (deferredFilters.pos === 'All' || p.pos === deferredFilters.pos) &&
-        (deferredFilters.team === 'All teams' || p.team === deferredFilters.team) &&
+        (deferredFilters.team === 'All teams' ||
+          p.team === deferredFilters.team) &&
         p.price <= deferredFilters.maxPrice &&
         p.own <= deferredFilters.maxOwn
     )
@@ -79,10 +104,12 @@ export function ExplorerScreen({
 
   return (
     <div className="flex flex-col gap-3.5 p-5.5">
-      <Card className="flex-row flex-wrap items-center gap-4.5 rounded-xl border-border p-3.5">
+      <Card className="border-border flex-row flex-wrap items-center gap-4.5 rounded-xl p-3.5">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] tracking-wider text-(--fg3) uppercase">Position</span>
-          <div className="flex gap-1 rounded-lg border border-border bg-muted p-0.75">
+          <span className="text-[10px] tracking-wider text-(--fg3) uppercase">
+            Position
+          </span>
+          <div className="border-border bg-muted flex gap-1 rounded-lg border p-0.75">
             {POS_FILTERS.map((f) => {
               const active = filters.pos === f
               return (
@@ -93,7 +120,9 @@ export function ExplorerScreen({
                   onClick={() => onFiltersChange({ pos: f })}
                   className={cn(
                     'h-auto rounded-md px-2.5 py-1.25 text-xs font-medium',
-                    active ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-(--fg2)'
+                    active
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'text-(--fg2)'
                   )}
                 >
                   {f}
@@ -103,9 +132,14 @@ export function ExplorerScreen({
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] tracking-wider text-(--fg3) uppercase">Team</span>
-          <Select value={filters.team} onValueChange={(v) => v != null && onFiltersChange({ team: v })}>
-            <SelectTrigger className="min-w-[150px] rounded-lg border-border bg-muted text-xs">
+          <span className="text-[10px] tracking-wider text-(--fg3) uppercase">
+            Team
+          </span>
+          <Select
+            value={filters.team}
+            onValueChange={(v) => v != null && onFiltersChange({ team: v })}
+          >
+            <SelectTrigger className="border-border bg-muted min-w-[150px] rounded-lg text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -126,28 +160,40 @@ export function ExplorerScreen({
             max={15}
             step={0.5}
             value={[filters.maxPrice]}
-            onValueChange={(v) => onFiltersChange({ maxPrice: Array.isArray(v) ? v[0] : v })}
+            onValueChange={(v) =>
+              onFiltersChange({ maxPrice: Array.isArray(v) ? v[0] : v })
+            }
           />
         </div>
         <div className="flex min-w-[190px] flex-col gap-2">
-          <span className="text-[10px] tracking-wider text-(--fg3) uppercase">Max ownership · {filters.maxOwn}%</span>
+          <span className="text-[10px] tracking-wider text-(--fg3) uppercase">
+            Max ownership · {filters.maxOwn}%
+          </span>
           <Slider
             min={1}
             max={60}
             step={1}
             value={[filters.maxOwn]}
-            onValueChange={(v) => onFiltersChange({ maxOwn: Array.isArray(v) ? v[0] : v })}
+            onValueChange={(v) =>
+              onFiltersChange({ maxOwn: Array.isArray(v) ? v[0] : v })
+            }
           />
         </div>
         <div className="ml-auto flex items-center gap-2.5">
-          <span className="mono text-xs text-(--fg3)">{rows.length} players</span>
-          <Button variant="outline" onClick={onReset} className="h-auto rounded-lg px-3 py-1.75 text-xs text-(--fg2)">
+          <span className="mono text-xs text-(--fg3)">
+            {rows.length} players
+          </span>
+          <Button
+            variant="outline"
+            onClick={onReset}
+            className="h-auto rounded-lg px-3 py-1.75 text-xs text-(--fg2)"
+          >
             Reset
           </Button>
         </div>
       </Card>
 
-      <Card className="gap-0 rounded-xl border-border py-0">
+      <Card className="border-border gap-0 rounded-xl py-0">
         <Table className="text-[13px]">
           <TableHeader>
             <TableRow className="bg-(--card2) hover:bg-(--card2)">
@@ -175,29 +221,60 @@ export function ExplorerScreen({
           </TableHeader>
           <TableBody>
             {rows.map((p) => (
-              <TableRow key={p.id} onClick={() => onOpenPlayer(p.id)} className="cursor-pointer border-border">
+              <TableRow
+                key={p.id}
+                onClick={() => onOpenPlayer(p.id)}
+                className="border-border cursor-pointer"
+              >
                 <TableCell className="px-3 py-2.25">
                   <div className="flex items-center gap-2.25">
-                    <i data-status={p.status} className="block size-1.5 shrink-0 rounded-full" />
-                    <span className="font-semibold tracking-tight">{p.name}</span>
+                    <i
+                      data-status={p.status}
+                      className="block size-1.5 shrink-0 rounded-full"
+                    />
+                    <span className="font-semibold tracking-tight">
+                      {p.name}
+                    </span>
                   </div>
                 </TableCell>
-                <TableCell className="mono px-3 py-2.25 text-xs text-(--fg2)">{p.team}</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-xs text-(--fg2)">
+                  {p.team}
+                </TableCell>
                 <TableCell className="px-3 py-2.25">
-                  <Badge variant="outline" className="mono rounded-full border-border bg-muted px-1.75 py-0.5 text-[11px] font-normal text-(--fg2)">
+                  <Badge
+                    variant="outline"
+                    className="mono border-border bg-muted rounded-full px-1.75 py-0.5 text-[11px] font-normal text-(--fg2)"
+                  >
                     {p.pos}
                   </Badge>
                 </TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right">£{p.price.toFixed(1)}</TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right" data-delta={p.priceDir}>
+                <TableCell className="mono px-3 py-2.25 text-right">
+                  £{p.price.toFixed(1)}
+                </TableCell>
+                <TableCell
+                  className="mono px-3 py-2.25 text-right"
+                  data-delta={p.priceDir}
+                >
                   {p.priceMove}
                 </TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">{p.own.toFixed(1)}%</TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right">{p.form.toFixed(1)}</TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">{p.xg.toFixed(2)}</TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">{p.xa.toFixed(2)}</TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right font-semibold text-primary">{p.xgi.toFixed(2)}</TableCell>
-                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">{p.mins}</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">
+                  {p.own.toFixed(1)}%
+                </TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right">
+                  {p.form.toFixed(1)}
+                </TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">
+                  {p.xg.toFixed(2)}
+                </TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">
+                  {p.xa.toFixed(2)}
+                </TableCell>
+                <TableCell className="mono text-primary px-3 py-2.25 text-right font-semibold">
+                  {p.xgi.toFixed(2)}
+                </TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-(--fg2)">
+                  {p.mins}
+                </TableCell>
                 <TableCell className="px-3 py-2.25">
                   <div className="flex justify-end gap-1">
                     {p.next3.map((f, i) => (

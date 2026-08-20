@@ -41,14 +41,25 @@ export const fplKeys = {
     [...fplKeys.all, 'entry', entryId, 'event', eventId] as const,
   classicLeague: (
     leagueId: number,
-    options?: { pageStandings?: number; pageNewEntries?: number; phase?: number }
+    options?: {
+      pageStandings?: number
+      pageNewEntries?: number
+      phase?: number
+    }
   ) => [...fplKeys.all, 'leagues-classic', leagueId, options ?? {}] as const,
   h2hLeague: (
     leagueId: number,
     options?: { pageStandings?: number; pageNewEntries?: number }
   ) => [...fplKeys.all, 'leagues-h2h', leagueId, options ?? {}] as const,
   h2hMatches: (leagueId: number, entryId: number, page: number) =>
-    [...fplKeys.all, 'leagues-h2h', leagueId, 'matches', entryId, page] as const,
+    [
+      ...fplKeys.all,
+      'leagues-h2h',
+      leagueId,
+      'matches',
+      entryId,
+      page,
+    ] as const,
 }
 
 // General data such as players, teams and gameweeks. Barely changes
@@ -106,8 +117,7 @@ export function useEntry(entryId: number) {
 export function useEntryHistory(entryId: number) {
   return useQuery({
     queryKey: fplKeys.entryHistory(entryId),
-    queryFn: () =>
-      fetchJson<EntryHistory>(`/api/fpl/entry/${entryId}/history`),
+    queryFn: () => fetchJson<EntryHistory>(`/api/fpl/entry/${entryId}/history`),
     enabled: Number.isFinite(entryId),
   })
 }
@@ -170,7 +180,8 @@ export function useElementSummaries(elementIds: number[]) {
   return useQueries({
     queries: elementIds.map((id) => ({
       queryKey: fplKeys.elementSummary(id),
-      queryFn: () => fetchJson<ElementSummary>(`/api/fpl/element-summary/${id}`),
+      queryFn: () =>
+        fetchJson<ElementSummary>(`/api/fpl/element-summary/${id}`),
       staleTime: 5 * 60 * 1000,
     })),
   })
