@@ -1,6 +1,10 @@
 'use client'
 
 import { useElementSummary } from '@/lib/queries/fpl'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import { PlayerBarChart } from './PlayerBarChart'
 import type { Player } from './types'
 
@@ -25,117 +29,65 @@ export function PlayerSheet({ player, onClose }: { player: Player; onClose: () =
   const chartData = (summary?.history ?? []).slice(-5).map((h) => ({ label: `GW${h.round}`, value: h.total_points }))
 
   return (
-    <>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 60 }} onClick={onClose} />
-      <aside
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: 420,
-          maxWidth: '92vw',
-          background: 'var(--card)',
-          borderLeft: '1px solid var(--border)',
-          zIndex: 61,
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-        }}
-      >
-        <div style={{ padding: 18, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <i data-status={player.status} style={{ width: 8, height: 8, borderRadius: 9 }} />
-              <span style={{ fontSize: 19, fontWeight: 650, letterSpacing: '-.02em' }}>{player.name}</span>
-            </div>
-            <div className="mono" style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 5 }}>
-              {player.team} · {player.pos} · £{player.price.toFixed(1)}m · {player.own.toFixed(1)}% owned
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 8, lineHeight: 1.5 }}>{player.note}</div>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--fg2)',
-              cursor: 'pointer',
-              borderRadius: 8,
-              padding: '4px 9px',
-              fontSize: 14,
-              lineHeight: 1.2,
-            }}
-          >
-            ×
-          </button>
-        </div>
-        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="w-[420px] gap-0 overflow-y-auto border-border sm:max-w-[420px]">
+        <SheetHeader className="gap-1 border-b border-border p-4.5 pr-10">
+          <SheetTitle className="flex items-center gap-2.25 text-[19px] font-bold tracking-tight">
+            <i data-status={player.status} className="size-2 rounded-full" />
+            {player.name}
+          </SheetTitle>
+          <SheetDescription className="mono text-xs text-[var(--fg3)]">
+            {player.team} · {player.pos} · £{player.price.toFixed(1)}m · {player.own.toFixed(1)}% owned
+          </SheetDescription>
+          <div className="text-xs leading-relaxed text-[var(--fg2)]">{player.note}</div>
+        </SheetHeader>
+        <div className="flex flex-col gap-4.5 p-4.5">
+          <div className="grid grid-cols-3 gap-2.5">
             {bigStats.map((s) => (
-              <div key={s.k} style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card2)', padding: 11 }}>
-                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>{s.k}</div>
-                <div className="mono" style={{ fontSize: 22, fontWeight: 600, marginTop: 5 }}>
-                  {s.v}
-                </div>
-              </div>
+              <Card key={s.k} className="gap-1 rounded-[10px] border-border bg-[var(--card2)] p-2.75">
+                <div className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">{s.k}</div>
+                <div className="mono text-[22px] font-semibold">{s.v}</div>
+              </Card>
             ))}
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>Points per gameweek</div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card2)', padding: 12 }}>
+            <div className="mb-2.5 text-xs font-semibold">Points per gameweek</div>
+            <Card className="rounded-[10px] border-border bg-[var(--card2)] p-3">
               {isLoading ? (
-                <div style={{ padding: 24, textAlign: 'center', fontSize: 12, color: 'var(--fg3)' }}>Loading…</div>
+                <div className="p-6 text-center text-xs text-[var(--fg3)]">Loading…</div>
               ) : isError || chartData.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', fontSize: 12, color: 'var(--fg3)' }}>
-                  No completed gameweeks yet this season.
-                </div>
+                <div className="p-6 text-center text-xs text-[var(--fg3)]">No completed gameweeks yet this season.</div>
               ) : (
                 <PlayerBarChart data={chartData} />
               )}
-            </div>
+            </Card>
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Full breakdown</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, border: '1px solid var(--border)', borderRadius: 10 }}>
-              <tbody>
+            <div className="mb-2 text-xs font-semibold">Full breakdown</div>
+            <Table className="rounded-[10px] border border-border text-[12.5px]">
+              <TableBody>
                 {table.map((r) => (
-                  <tr key={r.k} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 12px', color: 'var(--fg3)' }}>{r.k}</td>
-                    <td className="mono" style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>
-                      {r.v}
-                    </td>
-                  </tr>
+                  <TableRow key={r.k} className="border-border hover:bg-transparent">
+                    <TableCell className="px-3 py-2 text-[var(--fg3)]">{r.k}</TableCell>
+                    <TableCell className="mono px-3 py-2 text-right font-semibold">{r.v}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Next 5 fixtures</div>
-            <div style={{ display: 'flex', gap: 5 }}>
+            <div className="mb-2 text-xs font-semibold">Next 5 fixtures</div>
+            <div className="flex gap-1.25">
               {player.next.map((f, i) => (
-                <span key={i} data-d={f.d} style={{ flex: 1, height: 28 }}>
+                <span key={i} data-d={f.d} className="h-7 flex-1">
                   {f.label}
                 </span>
               ))}
             </div>
           </div>
-          <button
-            style={{
-              padding: 11,
-              borderRadius: 9,
-              border: 'none',
-              background: 'var(--accent)',
-              color: 'var(--accent-fg)',
-              fontSize: 13,
-              fontWeight: 650,
-              cursor: 'pointer',
-            }}
-          >
-            Add to shortlist
-          </button>
+          <Button className="h-auto rounded-lg py-2.75 text-[13px] font-semibold">Add to shortlist</Button>
         </div>
-      </aside>
-    </>
+      </SheetContent>
+    </Sheet>
   )
 }

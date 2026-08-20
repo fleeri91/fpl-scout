@@ -1,44 +1,27 @@
 'use client'
 
+import { Badge } from '@/components/ui/badge'
+import { Card, CardHeader } from '@/components/ui/card'
 import type { ChipCardView } from '../mapFplData'
 
 export function ChipsScreen({ chips }: { chips: ChipCardView[] }) {
   return (
-    <div style={{ padding: 22, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16, alignItems: 'start' }}>
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] items-start gap-4 p-5.5">
       {chips.map((c) => (
-        <section key={c.name} style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', overflow: 'hidden' }}>
-          <div
-            style={{
-              padding: 16,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
+        <Card key={c.name} className="gap-0 rounded-xl border-border py-0">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 py-4">
             <div>
-              <div style={{ fontSize: 16, fontWeight: 650, letterSpacing: '-.015em' }}>{c.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 3 }}>{c.availability}</div>
+              <div className="text-base font-bold tracking-tight">{c.name}</div>
+              <div className="mt-0.75 text-xs text-[var(--fg2)]">{c.availability}</div>
             </div>
-            <span
-              className="mono"
-              style={{
-                fontSize: 10,
-                textTransform: 'uppercase',
-                letterSpacing: '.08em',
-                fontWeight: 700,
-                padding: '4px 8px',
-                borderRadius: 99,
-                border: `1px solid ${c.badgeBorder}`,
-                background: c.badgeBg,
-                color: c.badgeFg,
-                whiteSpace: 'nowrap',
-              }}
+            <Badge
+              className="mono rounded-full px-2 py-1 text-[10px] font-bold tracking-wider uppercase"
+              style={{ border: `1px solid ${c.badgeBorder}`, background: c.badgeBg, color: c.badgeFg }}
             >
               {c.status}
-            </span>
-          </div>
-        </section>
+            </Badge>
+          </CardHeader>
+        </Card>
       ))}
     </div>
   )

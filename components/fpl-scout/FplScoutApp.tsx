@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import {
   useBootstrap,
   useElementSummaries,
@@ -9,6 +9,8 @@ import {
   useEntryHistory,
   useFixtures,
 } from '@/lib/queries/fpl'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import './fpl-scout.css'
 import { ConnectScreen } from './ConnectScreen'
 import { Header } from './Header'
@@ -36,14 +38,14 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
-function StatusShell({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
+function StatusShell({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 430, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', padding: 22 }}>
-        <div style={{ fontSize: 16, fontWeight: 650, letterSpacing: '-.015em' }}>{title}</div>
-        <div style={{ fontSize: 12.5, color: 'var(--fg2)', marginTop: 8, lineHeight: 1.5 }}>{body}</div>
-        {action ? <div style={{ marginTop: 16 }}>{action}</div> : null}
-      </div>
+    <div className="grid min-h-screen place-items-center p-6">
+      <Card className="w-full max-w-[430px] rounded-xl border-border p-5.5">
+        <div className="text-base font-semibold tracking-tight">{title}</div>
+        <div className="mt-2 text-[12.5px] leading-relaxed text-[var(--fg2)]">{body}</div>
+        {action ? <div className="mt-4">{action}</div> : null}
+      </Card>
     </div>
   )
 }
@@ -72,6 +74,21 @@ export function FplScoutApp() {
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
+  }, [])
+
+  // Select/Sheet/etc. render their popup content in a portal appended to
+  // <body>, outside the .fpl-scout wrapper below — so the theme variables
+  // scoped to that wrapper wouldn't reach them. Mirroring the class onto
+  // <body> lets portaled content inherit the same theme via normal CSS
+  // inheritance. Safe from FOUC: portals only ever open after a user
+  // interaction, which can't happen before this effect has already run.
+  useEffect(() => {
+    document.body.classList.add('fpl-scout')
+    document.body.dataset.theme = 'dark'
+    return () => {
+      document.body.classList.remove('fpl-scout')
+      delete document.body.dataset.theme
+    }
   }, [])
 
   const numericTeamId = teamId ? Number(teamId) : NaN
@@ -226,7 +243,7 @@ export function FplScoutApp() {
 
   if (!teamId) {
     return (
-      <div className="fpl-scout" data-theme="dark" style={{ minHeight: '100vh' }}>
+      <div className="fpl-scout min-h-screen" data-theme="dark">
         <ConnectScreen
           entry={entry}
           entryError={entryError}
@@ -247,17 +264,14 @@ export function FplScoutApp() {
 
   if (entryQuery.isError) {
     return (
-      <div className="fpl-scout" data-theme="dark" style={{ minHeight: '100vh' }}>
+      <div className="fpl-scout min-h-screen" data-theme="dark">
         <StatusShell
           title="Team not found"
           body="Scout couldn't find an FPL team with that ID. Double-check it and try again."
           action={
-            <button
-              onClick={backToConnect}
-              style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: 'var(--accent-fg)', fontSize: 13, fontWeight: 650, cursor: 'pointer' }}
-            >
+            <Button onClick={backToConnect} className="h-auto rounded-lg px-3.5 py-2.25 text-[13px] font-semibold">
               Try again
-            </button>
+            </Button>
           }
         />
       </div>
@@ -267,17 +281,14 @@ export function FplScoutApp() {
   const anyError = bootstrapQuery.isError || entryHistoryQuery.isError || fixturesQuery.isError
   if (anyError) {
     return (
-      <div className="fpl-scout" data-theme="dark" style={{ minHeight: '100vh' }}>
+      <div className="fpl-scout min-h-screen" data-theme="dark">
         <StatusShell
           title="Couldn't load that team"
           body="This team ID is valid, but Scout couldn't load its history right now. The FPL API may be temporarily unavailable."
           action={
-            <button
-              onClick={disconnect}
-              style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: 'var(--accent-fg)', fontSize: 13, fontWeight: 650, cursor: 'pointer' }}
-            >
+            <Button onClick={disconnect} className="h-auto rounded-lg px-3.5 py-2.25 text-[13px] font-semibold">
               Try a different team
-            </button>
+            </Button>
           }
         />
       </div>
@@ -287,7 +298,7 @@ export function FplScoutApp() {
   const allReady = bootstrapQuery.data && entryQuery.data && entryHistoryQuery.data && fixturesQuery.data && currentEvent
   if (!allReady) {
     return (
-      <div className="fpl-scout" data-theme="dark" style={{ minHeight: '100vh' }}>
+      <div className="fpl-scout min-h-screen" data-theme="dark">
         <StatusShell title="Fetching squad…" body="Pulling your team, gameweek picks and fixtures from the FPL API." />
       </div>
     )
@@ -297,22 +308,11 @@ export function FplScoutApp() {
   // so a team can be perfectly valid while its current-event picks 404.
   const picksAvailable = !!entryEventQuery.data
   const picksUnavailableNotice = (
-    <div style={{ padding: 22 }}>
-      <div
-        style={{
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          background: 'var(--card)',
-          padding: 24,
-          textAlign: 'center',
-          color: 'var(--fg2)',
-          fontSize: 13,
-          lineHeight: 1.6,
-        }}
-      >
+    <div className="p-5.5">
+      <Card className="rounded-xl border-border p-6 text-center text-[13px] leading-relaxed text-[var(--fg2)]">
         Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API only exposes a gameweek&apos;s squad once its
         deadline has passed. Check back after {new Date(currentEvent.deadline_time).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}.
-      </div>
+      </Card>
     </div>
   )
 
@@ -337,8 +337,8 @@ export function FplScoutApp() {
   const [title, subtitle] = titles[screen]
 
   return (
-    <div className="fpl-scout" data-theme="dark" style={{ minHeight: '100vh' }}>
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="fpl-scout min-h-screen" data-theme="dark">
+      <div className="flex min-h-screen">
         <Sidebar
           screen={screen}
           navOpen={navOpen}
@@ -348,7 +348,7 @@ export function FplScoutApp() {
           onToggleNav={() => setNavOpen((v) => !v)}
         />
 
-        <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <main className="flex min-w-0 flex-1 flex-col">
           <Header
             title={title}
             subtitle={subtitle}

@@ -1,5 +1,7 @@
 'use client'
 
+import { Card } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { BestWindow, FixturePlannerRow } from '../mapFplData'
 
 export function FixturesScreen({
@@ -12,115 +14,74 @@ export function FixturesScreen({
   bestWindows: BestWindow[]
 }) {
   return (
-    <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--fg3)' }}>
-          <span style={{ textTransform: 'uppercase', letterSpacing: '.09em' }}>Difficulty</span>
+    <div className="flex flex-col gap-3.5 p-5.5">
+      <div className="flex flex-wrap items-center justify-between gap-3.5">
+        <div className="flex items-center gap-2 text-[11px] text-[var(--fg3)]">
+          <span className="tracking-wider uppercase">Difficulty</span>
           {[1, 2, 3, 4, 5].map((d) => (
-            <span key={d} data-d={d} style={{ padding: '3px 9px' }}>
+            <span key={d} data-d={d} className="px-2.25 py-0.75">
               {d}
             </span>
           ))}
-          <span style={{ marginLeft: 6 }}>Home in caps, away lowercase</span>
+          <span className="ml-1.5">Home in caps, away lowercase</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--fg2)' }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, border: '1.5px solid var(--accent)', display: 'inline-block' }} />
+        <div className="flex items-center gap-2 text-xs text-[var(--fg2)]">
+          <span className="inline-block size-2.5 rounded-sm border-[1.5px] border-primary" />
           Best 3-GW window
         </div>
       </div>
 
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--card2)' }}>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '9px 12px',
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '.09em',
-                    color: 'var(--fg3)',
-                    borderBottom: '1px solid var(--border)',
-                  }}
-                >
-                  Team
-                </th>
-                {gws.map((g) => (
-                  <th
-                    key={g}
-                    className="mono"
-                    style={{
-                      padding: '9px 6px',
-                      fontSize: 10,
-                      letterSpacing: '.06em',
-                      color: 'var(--fg3)',
-                      borderBottom: '1px solid var(--border)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {g}
-                  </th>
-                ))}
-                <th
-                  style={{
-                    padding: '9px 12px',
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '.09em',
-                    color: 'var(--fg3)',
-                    borderBottom: '1px solid var(--border)',
-                    textAlign: 'right',
-                  }}
-                >
-                  Avg
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {matrix.map((row) => (
-                <tr key={row.team} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '6px 12px', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>{row.team}</td>
-                  {row.cells.map((c, i) => (
-                    <td key={i} style={{ padding: '3px 3px' }}>
-                      <div data-d={c.d} style={{ height: 30, outline: c.ring, outlineOffset: -2, borderRadius: 5 }}>
-                        {c.opp}
-                      </div>
-                    </td>
-                  ))}
-                  <td className="mono" style={{ padding: '6px 12px', textAlign: 'right', fontSize: 12, color: 'var(--fg2)' }}>
-                    {row.avg}
-                  </td>
-                </tr>
+      <Card className="gap-0 rounded-xl border-border py-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-[var(--card2)] hover:bg-[var(--card2)]">
+              <TableHead className="h-auto px-3 py-2.25 text-[10px] font-semibold tracking-wider text-[var(--fg3)] uppercase">
+                Team
+              </TableHead>
+              {gws.map((g) => (
+                <TableHead key={g} className="mono h-auto px-1.5 py-2.25 text-center text-[10px] font-semibold tracking-wider text-[var(--fg3)]">
+                  {g}
+                </TableHead>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              <TableHead className="h-auto px-3 py-2.25 text-right text-[10px] font-semibold tracking-wider text-[var(--fg3)] uppercase">
+                Avg
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {matrix.map((row) => (
+              <TableRow key={row.team} className="border-border hover:bg-transparent">
+                <TableCell className="px-3 py-1.5 text-[13px] font-semibold">{row.team}</TableCell>
+                {row.cells.map((c, i) => (
+                  <TableCell key={i} className="px-0.75 py-0.75">
+                    <div data-d={c.d} className="h-7.5" style={{ outline: c.ring, outlineOffset: -2, borderRadius: 5 }}>
+                      {c.opp}
+                    </div>
+                  </TableCell>
+                ))}
+                <TableCell className="mono px-3 py-1.5 text-right text-xs text-[var(--fg2)]">{row.avg}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
 
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', padding: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Best windows</div>
-        <div style={{ fontSize: 12, color: 'var(--fg2)', marginBottom: 14 }}>
-          Lowest average difficulty across any three consecutive gameweeks.
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))', gap: 10 }}>
+      <Card className="gap-0 rounded-xl border-border p-4">
+        <div className="mb-1 text-sm font-semibold">Best windows</div>
+        <div className="mb-3.5 text-xs text-[var(--fg2)]">Lowest average difficulty across any three consecutive gameweeks.</div>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-2.5">
           {bestWindows.map((w) => (
-            <div key={w.team} style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card2)', padding: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 650 }}>{w.team}</span>
-                <span className="mono" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>
-                  {w.avg} avg
-                </span>
+            <div key={w.team} className="rounded-[10px] border border-border bg-[var(--card2)] p-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-bold">{w.team}</span>
+                <span className="mono text-xs font-semibold text-primary">{w.avg} avg</span>
               </div>
-              <div className="mono" style={{ fontSize: 11, color: 'var(--fg3)', marginTop: 6 }}>
-                {w.range}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 6, lineHeight: 1.45 }}>{w.note}</div>
+              <div className="mono mt-1.5 text-[11px] text-[var(--fg3)]">{w.range}</div>
+              <div className="mt-1.5 text-xs leading-relaxed text-[var(--fg2)]">{w.note}</div>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

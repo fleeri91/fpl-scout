@@ -1,5 +1,10 @@
 'use client'
 
+import { X } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import { Sparkline } from '../Sparkline'
 import type { Delta, Player } from '../types'
 
@@ -18,59 +23,44 @@ interface Alert {
   body: string
 }
 
+function StatusDot({ status }: { status: string }) {
+  return <i data-status={status} className="block size-1.75 shrink-0 rounded-full" />
+}
+
 function PlayerCard({ p, dim, onOpen }: { p: Player; dim?: boolean; onOpen: () => void }) {
   return (
-    <button
+    <Button
+      variant="outline"
       onClick={onOpen}
-      style={{
-        textAlign: 'left',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        background: dim ? 'transparent' : 'var(--card2)',
-        padding: 10,
-        cursor: 'pointer',
-        color: 'var(--fg)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-      }}
-      data-hover-accent
+      className={cn(
+        'h-auto flex-col items-stretch gap-2 rounded-[10px] border-border p-2.5 text-left whitespace-normal',
+        dim ? 'bg-transparent' : 'bg-[var(--card2)]'
+      )}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <i data-status={p.status} style={{ width: 7, height: 7, borderRadius: 9, flex: '0 0 auto' }} />
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            letterSpacing: '-.01em',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
+      <div className="flex items-center gap-2">
+        <StatusDot status={p.status} />
+        <span className="overflow-hidden text-[13px] font-semibold text-ellipsis whitespace-nowrap text-foreground">
           {p.name}
         </span>
       </div>
-      <div className="mono" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--fg3)' }}>
+      <div className="mono flex justify-between text-[11px] text-[var(--fg3)]">
         <span>
           {p.team} · {p.pos}
         </span>
         {!dim ? <span>£{p.price.toFixed(1)}m</span> : null}
       </div>
       {dim ? (
-        <div className="mono" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--fg3)' }}>
+        <div className="mono flex justify-between text-[11px] text-[var(--fg3)]">
           <span />
           <span>{p.xgi.toFixed(1)} xGI</span>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+        <div className="flex items-end justify-between gap-2">
           <Sparkline hist={p.hist} />
-          <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>
-            {p.xgi.toFixed(1)}
-          </span>
+          <span className="mono text-xs font-semibold text-primary">{p.xgi.toFixed(1)}</span>
         </div>
       )}
-    </button>
+    </Button>
   )
 }
 
@@ -103,139 +93,92 @@ export function DashboardScreen({
           .join(', ')
 
   return (
-    <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 14 }}>
+    <div className="flex flex-col gap-4.5 p-5.5">
+      <div className="grid grid-cols-4 gap-3.5">
         {summary.map((s) => (
-          <div key={s.label} style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', padding: 16 }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>{s.label}</div>
-            <div className="mono" style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-.02em', marginTop: 8 }}>
-              {s.value}
-            </div>
-            <div className="mono" data-delta={s.dir} style={{ fontSize: 12, marginTop: 4 }}>
+          <Card key={s.label} className="gap-1 rounded-xl border-border p-4">
+            <div className="text-[11px] tracking-wider text-[var(--fg3)] uppercase">{s.label}</div>
+            <div className="mono mt-1 text-[28px] font-semibold tracking-tight">{s.value}</div>
+            <div className="mono text-xs" data-delta={s.dir}>
               {s.note}
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2.1fr) minmax(0,1fr)', gap: 18, alignItems: 'start' }}>
-        <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', overflow: 'hidden' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '15px 16px',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
+      <div className="grid grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)] items-start gap-4.5">
+        <Card className="gap-0 rounded-xl border-border py-0">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border py-4">
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Squad health</div>
-              <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 2 }}>Points trend over recent gameweeks · {squadNote}</div>
+              <div className="text-sm font-semibold">Squad health</div>
+              <div className="mt-0.5 text-xs text-[var(--fg2)]">Points trend over recent gameweeks · {squadNote}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--fg3)' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i data-status="ok" style={{ width: 7, height: 7, borderRadius: 9, display: 'block' }} />
+            <div className="flex items-center gap-3 text-[11px] text-[var(--fg3)]">
+              <span className="flex items-center gap-1.5">
+                <StatusDot status="ok" />
                 Starting
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i data-status="risk" style={{ width: 7, height: 7, borderRadius: 9, display: 'block' }} />
+              <span className="flex items-center gap-1.5">
+                <StatusDot status="risk" />
                 Rotation
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i data-status="out" style={{ width: 7, height: 7, borderRadius: 9, display: 'block' }} />
+              <span className="flex items-center gap-1.5">
+                <StatusDot status="out" />
                 Injured
               </span>
             </div>
-          </div>
-          <div style={{ padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)', marginBottom: 10 }}>
-              Starting XI
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(168px,1fr))', gap: 10 }}>
+          </CardHeader>
+          <CardContent className="py-3.5">
+            <div className="mb-2.5 text-[11px] tracking-wider text-[var(--fg3)] uppercase">Starting XI</div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-2.5">
               {xi.map((p) => (
                 <PlayerCard key={p.id} p={p} onOpen={() => onOpenPlayer(p.id)} />
               ))}
             </div>
-            <div style={{ height: 1, background: 'var(--border)', margin: '16px 0' }} />
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)', marginBottom: 10 }}>
-              Bench
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(168px,1fr))', gap: 10, opacity: 0.7 }}>
+            <div className="my-4 h-px bg-border" />
+            <div className="mb-2.5 text-[11px] tracking-wider text-[var(--fg3)] uppercase">Bench</div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-2.5 opacity-70">
               {bench.map((p) => (
                 <PlayerCard key={p.id} p={p} dim onOpen={() => onOpenPlayer(p.id)} />
               ))}
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', overflow: 'hidden' }}>
-          <div
-            style={{
-              padding: '15px 16px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ fontSize: 14, fontWeight: 600 }}>This week&apos;s alerts</div>
-            <span
-              className="mono"
-              style={{
-                fontSize: 11,
-                padding: '2px 7px',
-                borderRadius: 99,
-                background: 'var(--muted)',
-                border: '1px solid var(--border)',
-                color: 'var(--fg2)',
-              }}
-            >
+        <Card className="gap-0 rounded-xl border-border py-0">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border py-4">
+            <div className="text-sm font-semibold">This week&apos;s alerts</div>
+            <Badge variant="outline" className="mono rounded-full border-border bg-muted px-1.75 py-0.5 text-[11px] font-normal text-[var(--fg2)]">
               {alerts.length}
-            </span>
-          </div>
-          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            </Badge>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2.25 py-3">
             {alerts.map((a) => (
-              <div
-                key={a.id}
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 10,
-                  background: 'var(--card2)',
-                  padding: '11px 12px',
-                  display: 'flex',
-                  gap: 10,
-                  alignItems: 'flex-start',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                    <span
-                      className="mono"
-                      data-delta={a.tone}
-                      style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}
-                    >
+              <div key={a.id} className="flex items-start gap-2.5 rounded-[10px] border border-border bg-[var(--card2)] p-2.75">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center gap-1.75">
+                    <span className="mono text-[10px] font-bold tracking-wider uppercase" data-delta={a.tone}>
                       {a.kind}
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{a.title}</span>
+                    <span className="text-xs font-semibold">{a.title}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--fg2)', lineHeight: 1.45 }}>{a.body}</div>
+                  <div className="text-xs leading-relaxed text-[var(--fg2)]">{a.body}</div>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => onDismissAlert(a.id)}
-                  style={{ border: 'none', background: 'transparent', color: 'var(--fg3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '2px 3px' }}
+                  className="text-[var(--fg3)]"
                 >
-                  ×
-                </button>
+                  <X className="size-3.5" />
+                </Button>
               </div>
             ))}
             {alerts.length === 0 ? (
-              <div style={{ padding: 18, textAlign: 'center', fontSize: 12, color: 'var(--fg3)' }}>
-                All clear. Nothing needs your attention.
-              </div>
+              <div className="p-4.5 text-center text-xs text-[var(--fg3)]">All clear. Nothing needs your attention.</div>
             ) : null}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

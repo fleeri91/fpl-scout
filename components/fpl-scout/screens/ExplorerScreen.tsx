@@ -1,6 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { cn } from '@/lib/utils'
 import type { Player, Position } from '../types'
 
 type SortKey = 'name' | 'team' | 'pos' | 'price' | 'priceMove' | 'own' | 'form' | 'xg' | 'xa' | 'xgi' | 'mins'
@@ -66,227 +73,140 @@ export function ExplorerScreen({
   }, [players, filters])
 
   return (
-    <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div
-        style={{
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          background: 'var(--card)',
-          padding: '12px 14px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 18,
-          alignItems: 'center',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>Position</span>
-          <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--muted)', borderRadius: 9, border: '1px solid var(--border)' }}>
+    <div className="flex flex-col gap-3.5 p-5.5">
+      <Card className="flex-row flex-wrap items-center gap-4.5 rounded-xl border-border p-3.5">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">Position</span>
+          <div className="flex gap-1 rounded-lg border border-border bg-muted p-0.75">
             {POS_FILTERS.map((f) => {
               const active = filters.pos === f
               return (
-                <button
+                <Button
                   key={f}
+                  size="sm"
+                  variant="ghost"
                   onClick={() => onFiltersChange({ pos: f })}
-                  style={{
-                    padding: '5px 11px',
-                    borderRadius: 6,
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    background: active ? 'var(--accent)' : 'transparent',
-                    color: active ? 'var(--accent-fg)' : 'var(--fg2)',
-                  }}
+                  className={cn(
+                    'h-auto rounded-md px-2.5 py-1.25 text-xs font-medium',
+                    active ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-[var(--fg2)]'
+                  )}
                 >
                   {f}
-                </button>
+                </Button>
               )
             })}
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>Team</span>
-          <select
-            value={filters.team}
-            onChange={(e) => onFiltersChange({ team: e.target.value })}
-            style={{
-              padding: '7px 10px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--muted)',
-              color: 'var(--fg)',
-              fontSize: 12,
-              minWidth: 150,
-            }}
-          >
-            {['All teams', ...teams].map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">Team</span>
+          <Select value={filters.team} onValueChange={(v) => v != null && onFiltersChange({ team: v })}>
+            <SelectTrigger className="min-w-[150px] rounded-lg border-border bg-muted text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {['All teams', ...teams].map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 190 }}>
-          <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>
+        <div className="flex min-w-[190px] flex-col gap-2">
+          <span className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">
             Max price · £{filters.maxPrice.toFixed(1)}m
           </span>
-          <input
-            type="range"
+          <Slider
             min={4}
             max={15}
             step={0.5}
-            value={filters.maxPrice}
-            onChange={(e) => onFiltersChange({ maxPrice: +e.target.value })}
-            style={{ accentColor: 'var(--accent)', width: '100%' }}
+            value={[filters.maxPrice]}
+            onValueChange={(v) => onFiltersChange({ maxPrice: Array.isArray(v) ? v[0] : v })}
           />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 190 }}>
-          <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>
-            Max ownership · {filters.maxOwn}%
-          </span>
-          <input
-            type="range"
+        <div className="flex min-w-[190px] flex-col gap-2">
+          <span className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">Max ownership · {filters.maxOwn}%</span>
+          <Slider
             min={1}
             max={60}
             step={1}
-            value={filters.maxOwn}
-            onChange={(e) => onFiltersChange({ maxOwn: +e.target.value })}
-            style={{ accentColor: 'var(--accent)', width: '100%' }}
+            value={[filters.maxOwn]}
+            onValueChange={(v) => onFiltersChange({ maxOwn: Array.isArray(v) ? v[0] : v })}
           />
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="mono" style={{ fontSize: 12, color: 'var(--fg3)' }}>
-            {rows.length} players
-          </span>
-          <button
-            onClick={onReset}
-            style={{
-              padding: '7px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--fg2)',
-              cursor: 'pointer',
-              fontSize: 12,
-            }}
-          >
+        <div className="ml-auto flex items-center gap-2.5">
+          <span className="mono text-xs text-[var(--fg3)]">{rows.length} players</span>
+          <Button variant="outline" onClick={onReset} className="h-auto rounded-lg px-3 py-1.75 text-xs text-[var(--fg2)]">
             Reset
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--card2)' }}>
-                {COLUMNS.map((c) => {
-                  const active = filters.sortKey === c.key
-                  return (
-                    <th
-                      key={c.key}
-                      onClick={() => onSort(c.key)}
-                      style={{
-                        textAlign: c.align,
-                        padding: '9px 12px',
-                        fontSize: 10,
-                        textTransform: 'uppercase',
-                        letterSpacing: '.09em',
-                        color: active ? 'var(--fg)' : 'var(--fg3)',
-                        fontWeight: 600,
-                        borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {c.label}
-                      {active ? (filters.sortDir < 0 ? ' ↓' : ' ↑') : ''}
-                    </th>
-                  )
-                })}
-                <th
-                  style={{
-                    padding: '9px 12px',
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '.09em',
-                    color: 'var(--fg3)',
-                    fontWeight: 600,
-                    borderBottom: '1px solid var(--border)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Next 3
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => (
-                <tr key={p.id} data-row onClick={() => onOpenPlayer(p.id)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '9px 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                      <i data-status={p.status} style={{ width: 6, height: 6, borderRadius: 9, flex: '0 0 auto' }} />
-                      <span style={{ fontWeight: 600, letterSpacing: '-.01em' }}>{p.name}</span>
-                    </div>
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', color: 'var(--fg2)', fontSize: 12 }}>
-                    {p.team}
-                  </td>
-                  <td style={{ padding: '9px 12px' }}>
-                    <span
-                      className="mono"
-                      style={{
-                        fontSize: 11,
-                        padding: '2px 7px',
-                        borderRadius: 99,
-                        background: 'var(--muted)',
-                        border: '1px solid var(--border)',
-                        color: 'var(--fg2)',
-                      }}
-                    >
-                      {p.pos}
-                    </span>
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', textAlign: 'right' }}>
-                    £{p.price.toFixed(1)}
-                  </td>
-                  <td className="mono" data-delta={p.priceDir} style={{ padding: '9px 12px', textAlign: 'right' }}>
-                    {p.priceMove}
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', textAlign: 'right', color: 'var(--fg2)' }}>
-                    {p.own.toFixed(1)}%
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', textAlign: 'right' }}>
-                    {p.form.toFixed(1)}
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', textAlign: 'right', color: 'var(--fg2)' }}>
-                    {p.xg.toFixed(2)}
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', textAlign: 'right', color: 'var(--fg2)' }}>
-                    {p.xa.toFixed(2)}
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--accent)' }}>
-                    {p.xgi.toFixed(2)}
-                  </td>
-                  <td className="mono" style={{ padding: '9px 12px', textAlign: 'right', color: 'var(--fg2)' }}>
-                    {p.mins}
-                  </td>
-                  <td style={{ padding: '9px 12px' }}>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      {p.next3.map((f, i) => (
-                        <span key={i} data-d={f.d} style={{ width: 38, height: 22 }}>
-                          {f.label}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card className="gap-0 rounded-xl border-border py-0">
+        <Table className="text-[13px]">
+          <TableHeader>
+            <TableRow className="bg-[var(--card2)] hover:bg-[var(--card2)]">
+              {COLUMNS.map((c) => {
+                const active = filters.sortKey === c.key
+                return (
+                  <TableHead
+                    key={c.key}
+                    onClick={() => onSort(c.key)}
+                    className={cn(
+                      'h-auto cursor-pointer px-3 py-2.25 text-[10px] font-semibold tracking-wider uppercase',
+                      c.align === 'right' ? 'text-right' : 'text-left',
+                      active ? 'text-foreground' : 'text-[var(--fg3)]'
+                    )}
+                  >
+                    {c.label}
+                    {active ? (filters.sortDir < 0 ? ' ↓' : ' ↑') : ''}
+                  </TableHead>
+                )
+              })}
+              <TableHead className="h-auto px-3 py-2.25 text-[10px] font-semibold tracking-wider text-[var(--fg3)] uppercase">
+                Next 3
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((p) => (
+              <TableRow key={p.id} onClick={() => onOpenPlayer(p.id)} className="cursor-pointer border-border">
+                <TableCell className="px-3 py-2.25">
+                  <div className="flex items-center gap-2.25">
+                    <i data-status={p.status} className="block size-1.5 shrink-0 rounded-full" />
+                    <span className="font-semibold tracking-tight">{p.name}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="mono px-3 py-2.25 text-xs text-[var(--fg2)]">{p.team}</TableCell>
+                <TableCell className="px-3 py-2.25">
+                  <Badge variant="outline" className="mono rounded-full border-border bg-muted px-1.75 py-0.5 text-[11px] font-normal text-[var(--fg2)]">
+                    {p.pos}
+                  </Badge>
+                </TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right">£{p.price.toFixed(1)}</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right" data-delta={p.priceDir}>
+                  {p.priceMove}
+                </TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-[var(--fg2)]">{p.own.toFixed(1)}%</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right">{p.form.toFixed(1)}</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-[var(--fg2)]">{p.xg.toFixed(2)}</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-[var(--fg2)]">{p.xa.toFixed(2)}</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right font-semibold text-primary">{p.xgi.toFixed(2)}</TableCell>
+                <TableCell className="mono px-3 py-2.25 text-right text-[var(--fg2)]">{p.mins}</TableCell>
+                <TableCell className="px-3 py-2.25">
+                  <div className="flex justify-end gap-1">
+                    {p.next3.map((f, i) => (
+                      <span key={i} data-d={f.d} className="h-5.5 w-9.5">
+                        {f.label}
+                      </span>
+                    ))}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   )
 }

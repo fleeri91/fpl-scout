@@ -1,105 +1,81 @@
 'use client'
 
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import type { TransferSectionView } from '../mapFplData'
 
 export function TransfersScreen({ transfers }: { transfers: TransferSectionView[] }) {
   if (transfers.length === 0) {
     return (
-      <div style={{ padding: 22 }}>
-        <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', padding: 24, textAlign: 'center', color: 'var(--fg3)', fontSize: 13 }}>
+      <div className="p-5.5">
+        <Card className="rounded-xl border-border p-6 text-center text-[13px] text-[var(--fg3)]">
           No transfer suggestions right now — your squad looks efficient for its price.
-        </div>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="flex flex-col gap-5 p-5.5">
       {transfers.map((t) => (
-        <section key={t.outName} style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', overflow: 'hidden' }}>
-          <div
-            style={{
-              padding: '15px 16px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
+        <Card key={t.outName} className="gap-0 rounded-xl border-border py-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border py-4">
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Replace {t.outName}</div>
-              <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 2 }}>{t.rationale}</div>
+              <div className="text-sm font-semibold">Replace {t.outName}</div>
+              <div className="mt-0.5 text-xs text-[var(--fg2)]">{t.rationale}</div>
             </div>
-            <span
-              className="mono"
-              style={{
-                fontSize: 11,
-                padding: '3px 9px',
-                borderRadius: 99,
-                background: 'var(--muted)',
-                border: '1px solid var(--border)',
-                color: 'var(--fg2)',
-              }}
-            >
+            <Badge variant="outline" className="mono rounded-full border-border bg-muted px-2.25 py-0.75 text-[11px] font-normal text-[var(--fg2)]">
               {t.bank} in bank
-            </span>
-          </div>
-          <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12 }}>
+            </Badge>
+          </CardHeader>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3 p-4">
             {t.cards.map((c) => (
-              <div key={c.name} style={{ border: `1px solid ${c.border}`, borderRadius: 11, background: c.bg, overflow: 'hidden' }}>
-                <div style={{ padding: '13px 14px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 650, letterSpacing: '-.01em' }}>{c.name}</span>
-                    <span className="mono" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: c.tagFg, fontWeight: 700 }}>
+              <div key={c.name} className="overflow-hidden rounded-[11px] border" style={{ borderColor: c.border, background: c.bg }}>
+                <div className="border-b border-border p-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold tracking-tight">{c.name}</span>
+                    <span className="mono text-[10px] font-bold tracking-wider uppercase" style={{ color: c.tagFg }}>
                       {c.tag}
                     </span>
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--fg3)', marginTop: 4 }}>
+                  <div className="mono mt-1 text-[11px] text-[var(--fg3)]">
                     {c.team} · {c.pos} · £{c.price}m
                   </div>
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <tbody>
+                <Table className="text-xs">
+                  <TableBody>
                     {c.stats.map((s) => (
-                      <tr key={s.k} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '7px 14px', color: 'var(--fg3)' }}>{s.k}</td>
-                        <td className="mono" data-delta={s.dir} style={{ padding: '7px 14px', textAlign: 'right', fontWeight: 600 }}>
+                      <TableRow key={s.k} className="border-border hover:bg-transparent">
+                        <TableCell className="px-3.5 py-1.75 text-[var(--fg3)]">{s.k}</TableCell>
+                        <TableCell className="mono px-3.5 py-1.75 text-right font-semibold" data-delta={s.dir}>
                           {s.v}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-                <div style={{ padding: '11px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)' }}>Next 5</div>
-                  <div style={{ display: 'flex', gap: 4 }}>
+                  </TableBody>
+                </Table>
+                <div className="flex flex-col gap-2 p-3.5">
+                  <div className="text-[10px] tracking-wider text-[var(--fg3)] uppercase">Next 5</div>
+                  <div className="flex gap-1">
                     {c.next.map((f, i) => (
-                      <span key={i} data-d={f.d} style={{ flex: 1, height: 22 }}>
+                      <span key={i} data-d={f.d} className="h-5.5 flex-1">
                         {f.label}
                       </span>
                     ))}
                   </div>
-                  <button
-                    style={{
-                      marginTop: 4,
-                      padding: 8,
-                      borderRadius: 8,
-                      border: `1px solid ${c.ctaBorder}`,
-                      background: c.ctaBg,
-                      color: c.ctaFg,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
+                  <Button
+                    className="mt-1 h-auto rounded-lg py-2 text-xs font-semibold"
+                    style={{ border: `1px solid ${c.ctaBorder}`, background: c.ctaBg, color: c.ctaFg }}
                   >
                     {c.cta}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </Card>
       ))}
     </div>
   )

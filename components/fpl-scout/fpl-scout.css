@@ -1,4 +1,5 @@
 .fpl-scout {
+  /* FPL Scout palette */
   --bg: #09090b;
   --card: #0e0e11;
   --card2: #131317;
@@ -21,6 +22,29 @@
   --d3f: #c4c4cc;
   --d4f: oklch(0.93 0.06 45);
   --d5f: oklch(0.94 0.08 25);
+
+  /* Same palette, expressed as shadcn's semantic tokens, so shadcn/ui
+     components (Button, Input, Select, Table, Card, Sheet, Badge, ...)
+     render in the FPL Scout look without themselves changing. Scoped here
+     rather than on :root/.dark so the rest of the app keeps its own theme.
+     Note: shadcn's own `--accent`/`--accent-foreground` (a neutral hover
+     surface, unrelated to our brand accent above) is deliberately left
+     alone here — it inherits the app's default neutral tone, which is
+     exactly what a dropdown-item hover state should look like. */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card-foreground: var(--fg);
+  --popover: var(--card2);
+  --popover-foreground: var(--fg);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --secondary: var(--card2);
+  --secondary-foreground: var(--fg);
+  --muted-foreground: var(--fg2);
+  --destructive: var(--neg);
+  --input: var(--border);
+  --ring: color-mix(in oklch, var(--accent), transparent 50%);
+  --radius: 0.6rem;
 
   background: var(--bg);
   color: var(--fg);
@@ -58,21 +82,13 @@
   --d5f: oklch(0.44 0.14 25);
 }
 
-.fpl-scout * {
-  box-sizing: border-box;
-}
-
 .fpl-scout a {
-  color: var(--accent);
+  color: var(--primary);
   text-decoration: none;
 }
 
 .fpl-scout a:hover {
   color: var(--fg);
-}
-
-.fpl-scout button {
-  font: inherit;
 }
 
 .fpl-scout [data-d] {
@@ -124,14 +140,6 @@
 }
 .fpl-scout [data-status='out'] {
   background: var(--neg);
-}
-
-.fpl-scout [data-row]:hover {
-  background: var(--card2);
-}
-
-.fpl-scout [data-hover-accent]:hover {
-  border-color: var(--accent);
 }
 
 .fpl-scout .mono {

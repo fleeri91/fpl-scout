@@ -1,13 +1,16 @@
 'use client'
 
+import { ChevronsLeft, ChevronsRight, LayoutDashboard, ListFilter, Grid2x2, Diamond, ArrowLeftRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { Screen } from './types'
 
-const NAV_ITEMS: { key: Screen; label: string; icon: string }[] = [
-  { key: 'dash', label: 'Dashboard', icon: '▦' },
-  { key: 'explorer', label: 'Player Explorer', icon: '☰' },
-  { key: 'fixtures', label: 'Fixture Planner', icon: '⊞' },
-  { key: 'chips', label: 'Chip Strategy', icon: '◆' },
-  { key: 'transfers', label: 'Transfer Suggestions', icon: '⇄' },
+const NAV_ITEMS: { key: Screen; label: string; icon: typeof LayoutDashboard }[] = [
+  { key: 'dash', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'explorer', label: 'Player Explorer', icon: ListFilter },
+  { key: 'fixtures', label: 'Fixture Planner', icon: Grid2x2 },
+  { key: 'chips', label: 'Chip Strategy', icon: Diamond },
+  { key: 'transfers', label: 'Transfer Suggestions', icon: ArrowLeftRight },
 ]
 
 export function Sidebar({
@@ -25,115 +28,52 @@ export function Sidebar({
   onNavigate: (screen: Screen) => void
   onToggleNav: () => void
 }) {
-  const navWidth = navOpen ? '212px' : '62px'
-
   return (
     <aside
-      style={{
-        width: navWidth,
-        flex: '0 0 auto',
-        borderRight: '1px solid var(--border)',
-        background: 'var(--card)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'sticky',
-        top: 0,
-        height: '100vh',
-        transition: 'width .18s ease',
-      }}
+      className={cn(
+        'sticky top-0 flex h-screen flex-0 flex-col border-r border-border bg-card transition-[width] duration-[.18s] ease-out',
+        navOpen ? 'w-[212px]' : 'w-[62px]'
+      )}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '16px 14px',
-          borderBottom: '1px solid var(--border)',
-          minHeight: 57,
-        }}
-      >
-        <div
-          style={{
-            width: 26,
-            height: 26,
-            flex: '0 0 auto',
-            borderRadius: 7,
-            background: 'var(--accent)',
-            color: 'var(--accent-fg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 800,
-            fontSize: 13,
-          }}
-        >
+      <div className="flex min-h-[57px] items-center gap-2.5 border-b border-border px-3.5 py-4">
+        <div className="flex size-[26px] flex-0 items-center justify-center rounded-md bg-primary text-[13px] font-extrabold text-primary-foreground">
           FS
         </div>
-        {navOpen ? (
-          <div style={{ fontSize: 14, fontWeight: 650, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>
-            FPL Scout
-          </div>
-        ) : null}
+        {navOpen ? <div className="text-sm font-semibold tracking-tight whitespace-nowrap">FPL Scout</div> : null}
       </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 8px', flex: 1 }}>
+      <nav className="flex flex-1 flex-col gap-0.5 p-2">
         {NAV_ITEMS.map((item) => {
           const active = screen === item.key
+          const Icon = item.icon
           return (
-            <button
+            <Button
               key={item.key}
+              variant="ghost"
               onClick={() => onNavigate(item.key)}
               title={item.label}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 10px',
-                borderRadius: 8,
-                border: `1px solid ${active ? 'var(--border)' : 'transparent'}`,
-                background: active ? 'var(--muted)' : 'transparent',
-                color: active ? 'var(--fg)' : 'var(--fg2)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontSize: 13,
-                fontWeight: 500,
-                width: '100%',
-              }}
+              className={cn(
+                'h-auto w-full justify-start gap-2.5 rounded-lg border px-2.5 py-2 text-[13px] font-medium',
+                active ? 'border-border bg-muted text-foreground' : 'border-transparent text-[var(--fg2)]'
+              )}
             >
-              <span className="mono" style={{ width: 16, flex: '0 0 auto', textAlign: 'center', opacity: 0.9, fontSize: 13 }}>
-                {item.icon}
-              </span>
-              {navOpen ? <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span> : null}
-            </button>
+              <Icon className="size-[15px] shrink-0 opacity-90" />
+              {navOpen ? <span className="whitespace-nowrap">{item.label}</span> : null}
+            </Button>
           )
         })}
       </nav>
 
-      <div style={{ padding: '10px 8px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ padding: 10, borderRadius: 9, background: 'var(--muted)', border: '1px solid var(--border)' }}>
+      <div className="flex flex-col gap-2 border-t border-border p-2">
+        <div className="rounded-lg border border-border bg-muted p-2.5">
           {navOpen ? (
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', color: 'var(--fg3)', marginBottom: 5 }}>
-              {deadlineLabel}
-            </div>
+            <div className="mb-1 text-[10px] tracking-wider text-[var(--fg3)] uppercase">{deadlineLabel}</div>
           ) : null}
-          <div className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>
-            {countdown}
-          </div>
+          <div className="mono text-sm font-semibold text-primary">{countdown}</div>
         </div>
-        <button
-          onClick={onToggleNav}
-          style={{
-            padding: 7,
-            borderRadius: 8,
-            border: '1px solid var(--border)',
-            background: 'transparent',
-            color: 'var(--fg2)',
-            cursor: 'pointer',
-            fontSize: 12,
-          }}
-        >
-          {navOpen ? '«' : '»'}
-        </button>
+        <Button variant="outline" onClick={onToggleNav} className="h-auto rounded-lg py-1.5 text-[var(--fg2)]">
+          {navOpen ? <ChevronsLeft className="size-4" /> : <ChevronsRight className="size-4" />}
+        </Button>
       </div>
     </aside>
   )
