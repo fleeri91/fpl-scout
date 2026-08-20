@@ -71,14 +71,14 @@ export function FixturesScreen({
                   <TableCell key={i} className="px-0.75 py-0.75">
                     <div
                       data-d={c.d}
-                      className="h-7.5"
+                      className="h-7.5 uppercase"
                       style={{
                         outline: c.ring,
                         outlineOffset: -2,
                         borderRadius: 5,
                       }}
                     >
-                      {c.opp}
+                      {`${c.opp}`}
                     </div>
                   </TableCell>
                 ))}
