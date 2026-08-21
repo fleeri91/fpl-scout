@@ -3,7 +3,6 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type KeyboardEvent,
   type ReactNode,
@@ -15,10 +14,6 @@ import {
   useEntryEvent,
   useEntryHistory,
   useFixtures,
-  useLogin,
-  useLogout,
-  useMe,
-  useMyTeam,
 } from '@/lib/queries/fpl'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -123,11 +118,6 @@ export default function Home() {
 
   const numericTeamId = teamId ? Number(teamId) : NaN
 
-  const meQuery = useMe()
-  const loginMutation = useLogin()
-  const logoutMutation = useLogout()
-  const loggedInEntryId = meQuery.data?.player.entry ?? null
-
   const bootstrapQuery = useBootstrap()
   const entryQuery = useEntry(numericTeamId)
   const entryHistoryQuery = useEntryHistory(numericTeamId)
@@ -137,19 +127,10 @@ export default function Home() {
     ? getCurrentEvent(bootstrapQuery.data)
     : undefined
   const entryEventQuery = useEntryEvent(numericTeamId, currentEvent?.id ?? NaN)
-  // /my-team/ only ever exposes the logged-in account's own squad, and
-  // works before the gameweek deadline — unlike the public picks endpoint
-  // above, which 404s until it passes. Used as a fallback for the current
-  // gameweek's picks when viewing your own logged-in team.
-  const myTeamQuery = useMyTeam(
-    numericTeamId,
-    loggedInEntryId != null && loggedInEntryId === numericTeamId
-  )
-  const effectivePicks = entryEventQuery.data?.picks ?? myTeamQuery.data?.picks
 
   const squadElementIds = useMemo(
-    () => effectivePicks?.map((p) => p.element) ?? [],
-    [effectivePicks]
+    () => entryEventQuery.data?.picks.map((p) => p.element) ?? [],
+    [entryEventQuery.data]
   )
   const summaries = useElementSummaries(squadElementIds)
   const histByElementId = useMemo(() => {
@@ -184,37 +165,11 @@ export default function Home() {
     if (e.key === 'Enter') connect()
   }
 
-  // Auto-connect to the logged-in account's own team once we know who they
-  // are. Guarded by a ref (not just `teamId == null`) so that disconnecting
-  // afterward — e.g. "Change" or "Try again" — doesn't immediately snap the
-  // user right back into the same team; it only re-fires for a genuinely
-  // new login.
-  const autoConnectedEntryRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (
-      loggedInEntryId != null &&
-      teamId == null &&
-      autoConnectedEntryRef.current !== loggedInEntryId
-    ) {
-      autoConnectedEntryRef.current = loggedInEntryId
-      connectWithId(String(loggedInEntryId))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggedInEntryId, teamId])
-
-  const login = (email: string, password: string) => {
-    loginMutation.mutate({ email, password })
-  }
-
   const disconnect = () => {
     setTeamId(null)
     setEntry('')
     setScreen('dash')
     setSelectedId(null)
-    if (loggedInEntryId != null) {
-      autoConnectedEntryRef.current = null
-      logoutMutation.mutate()
-    }
   }
 
   const backToConnect = () => setTeamId(null)
@@ -287,30 +242,30 @@ export default function Home() {
   ])
 
   const xi = useMemo(() => {
-    const picks = effectivePicks ?? []
+    const picks = entryEventQuery.data?.picks ?? []
     return picks
       .filter((p) => p.position <= 11)
       .sort((a, b) => a.position - b.position)
       .map((p) => playersById.get(p.element))
       .filter((p): p is Player => !!p)
-  }, [effectivePicks, playersById])
+  }, [entryEventQuery.data, playersById])
 
   const bench = useMemo(() => {
-    const picks = effectivePicks ?? []
+    const picks = entryEventQuery.data?.picks ?? []
     return picks
       .filter((p) => p.position > 11)
       .sort((a, b) => a.position - b.position)
       .map((p) => playersById.get(p.element))
       .filter((p): p is Player => !!p)
-  }, [effectivePicks, playersById])
+  }, [entryEventQuery.data, playersById])
 
   const squadElements = useMemo(() => {
-    if (!bootstrapQuery.data || !effectivePicks) return []
-    const squadIds = new Set(effectivePicks.map((p) => p.element))
+    if (!bootstrapQuery.data || !entryEventQuery.data) return []
+    const squadIds = new Set(entryEventQuery.data.picks.map((p) => p.element))
     return (bootstrapQuery.data.elements as FplElement[]).filter((el) =>
       squadIds.has(el.id)
     )
-  }, [bootstrapQuery.data, effectivePicks])
+  }, [bootstrapQuery.data, entryEventQuery.data])
 
   const alerts = useMemo(() => {
     return buildAlerts(squadElements).filter((a) => !dismissed.includes(a.id))
@@ -327,18 +282,10 @@ export default function Home() {
     [entryHistoryQuery.data, squadElements, fixturesQuery.data, currentEvent]
   )
 
-  const bankM =
-    (entryEventQuery.data?.entry_history.bank ??
-      myTeamQuery.data?.transfers.bank ??
-      0) / 10
-  const valueM =
-    (entryEventQuery.data?.entry_history.value ??
-      myTeamQuery.data?.transfers.value ??
-      0) / 10
+  const bankM = (entryEventQuery.data?.entry_history.bank ?? 0) / 10
+  const valueM = (entryEventQuery.data?.entry_history.value ?? 0) / 10
   const eventTransfers =
-    entryEventQuery.data?.entry_history.event_transfers ??
-    myTeamQuery.data?.transfers.made ??
-    0
+    entryEventQuery.data?.entry_history.event_transfers ?? 0
   const overallRank =
     entryEventQuery.data?.entry_history.overall_rank ??
     entryQuery.data?.summary_overall_rank ??
@@ -366,9 +313,11 @@ export default function Home() {
 
   const transfers = useMemo(() => {
     if (xi.length === 0 || allPlayers.length === 0) return []
-    const squadIds = new Set(effectivePicks?.map((p) => p.element) ?? [])
+    const squadIds = new Set(
+      entryEventQuery.data?.picks.map((p) => p.element) ?? []
+    )
     return buildTransferSuggestions(xi, allPlayers, squadIds, bankM)
-  }, [xi, allPlayers, effectivePicks, bankM])
+  }, [xi, allPlayers, entryEventQuery.data, bankM])
 
   const seasonLabel = useMemo(() => {
     if (!bootstrapQuery.data?.events.length) return ''
@@ -428,9 +377,6 @@ export default function Home() {
           onConnect={connect}
           onSelectRecent={connectWithId}
           onRemoveRecent={(id) => removeRecentTeamId(id, recentTeamIds)}
-          onLogin={login}
-          loginPending={loginMutation.isPending}
-          loginError={loginMutation.error?.message ?? ''}
         />
       </div>
     )
@@ -493,11 +439,9 @@ export default function Home() {
     )
   }
 
-  // The public FPL API only exposes a gameweek's picks once its deadline has
-  // passed, so a team can be perfectly valid while its current-event picks
-  // 404 — unless the viewer is logged in as that team, in which case
-  // /my-team/ fills the gap with live (pre-deadline) picks.
-  const picksAvailable = !!effectivePicks
+  // The FPL API only exposes a gameweek's picks once its deadline has passed,
+  // so a team can be perfectly valid while its current-event picks 404.
+  const picksAvailable = !!entryEventQuery.data
   const picksUnavailableNotice = (
     <div className="p-5.5">
       <Card className="border-border rounded-xl p-6 text-center text-[13px] leading-relaxed text-(--fg2)">

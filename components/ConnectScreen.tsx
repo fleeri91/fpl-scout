@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import type { KeyboardEvent } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,9 +23,6 @@ export function ConnectScreen({
   onConnect,
   onSelectRecent,
   onRemoveRecent,
-  onLogin,
-  loginPending,
-  loginError,
 }: {
   entry: string
   entryError: string
@@ -36,19 +33,7 @@ export function ConnectScreen({
   onConnect: () => void
   onSelectRecent: (id: string) => void
   onRemoveRecent: (id: string) => void
-  onLogin: (email: string, password: string) => void
-  loginPending: boolean
-  loginError: string
 }) {
-  const [mode, setMode] = useState<'login' | 'teamId'>('login')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-
-  const submitLogin = (e: FormEvent) => {
-    e.preventDefault()
-    onLogin(email, password)
-  }
-
   return (
     <div className="grid min-h-screen place-items-center p-6">
       <div className="flex w-full max-w-107.5 flex-col gap-4.5">
@@ -62,175 +47,85 @@ export function ConnectScreen({
         </div>
 
         <Card className="ring-border gap-0 rounded-xl py-0">
-          {mode === 'login' ? (
-            <>
-              <CardHeader className="border-border gap-1 border-b py-4.5">
-                <CardTitle className="text-[22px] font-extrabold tracking-[-0.035em]">
-                  Log in to FPL
-                </CardTitle>
-                <CardDescription className="text-[12.5px] leading-relaxed">
-                  Scout signs in through the official FPL login and only keeps
-                  the session it gets back — your password is forwarded once
-                  and never stored.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3.5 py-4.5">
-                <form
-                  onSubmit={submitLogin}
-                  className="flex flex-col gap-3.5"
-                >
-                  <div className="flex flex-col gap-1.5">
-                    <Label
-                      htmlFor="fpl-email"
-                      className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase"
-                    >
-                      Email
-                    </Label>
-                    <Input
-                      id="fpl-email"
-                      type="email"
-                      autoComplete="username"
-                      className="border-border bg-muted text-foreground h-auto rounded-lg px-3 py-2.5 text-sm"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      suppressHydrationWarning
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label
-                      htmlFor="fpl-password"
-                      className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase"
-                    >
-                      Password
-                    </Label>
-                    <Input
-                      id="fpl-password"
-                      type="password"
-                      autoComplete="current-password"
-                      className="border-border bg-muted text-foreground h-auto rounded-lg px-3 py-2.5 text-sm"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      suppressHydrationWarning
-                    />
-                  </div>
-                  {loginError ? (
-                    <span data-delta="down" className="text-xs">
-                      {loginError}
-                    </span>
-                  ) : null}
-                  <Button
-                    type="submit"
-                    disabled={loginPending}
-                    className="h-auto rounded-lg py-2.5 text-[13px] font-semibold"
-                  >
-                    {loginPending ? 'Logging in…' : 'Log in'}
-                  </Button>
-                </form>
-                <div className="bg-border h-px" />
-                <button
-                  type="button"
-                  onClick={() => setMode('teamId')}
-                  className="text-primary text-left text-xs font-medium"
-                >
-                  View a public team by ID instead →
-                </button>
-              </CardContent>
-            </>
-          ) : (
-            <>
-              <CardHeader className="border-border gap-1 border-b py-4.5">
-                <CardTitle className="text-[22px] font-extrabold tracking-[-0.035em]">
-                  Connect your team
-                </CardTitle>
-                <CardDescription className="text-[12.5px] leading-relaxed">
-                  Enter your FPL team ID so Scout can pull your squad,
-                  transfers and chip history. Current-gameweek picks only
-                  show once the deadline has passed — log in instead to see
-                  them live.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3.5 py-4.5">
-                <div className="flex flex-col gap-1.5">
-                  <Label
-                    htmlFor="team-id"
-                    className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase"
-                  >
-                    Team ID
-                  </Label>
-                  <Input
-                    id="team-id"
-                    className="mono border-border bg-muted text-foreground h-auto rounded-lg px-3 py-2.5 text-sm"
-                    value={entry}
-                    onChange={(e) => onEntryChange(e.target.value)}
-                    onKeyDown={onEntryKeyDown}
-                    placeholder="e.g. 3842106"
-                    inputMode="numeric"
-                    // base-ui's Input primitive sets caret-color on the client only
-                    // (to draw its own caret) — an expected, benign SSR mismatch.
-                    suppressHydrationWarning
-                  />
-                  {entryError ? (
-                    <span data-delta="down" className="text-xs">
-                      {entryError}
-                    </span>
-                  ) : null}
-                  {recentTeamIds.length > 0 ? (
-                    <div className="mt-0.5 flex flex-col gap-1.5">
-                      <span className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase">
-                        Recent teams
-                      </span>
-                      <div className="divide-border border-border bg-muted divide-y overflow-hidden rounded-lg border">
-                        {recentTeamIds.map((id) => (
-                          <div key={id} className="flex items-center">
-                            <Button
-                              variant="ghost"
-                              onClick={() => onSelectRecent(id)}
-                              className="mono text-foreground h-auto flex-1 justify-start rounded-none px-3 py-2.5 text-[13px] font-normal"
-                            >
-                              {id}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => onRemoveRecent(id)}
-                              aria-label={`Remove ${id} from recent teams`}
-                              className="mr-1.5 rounded-md text-(--fg3)"
-                            >
-                              <X className="size-3.5" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-                <Button
-                  onClick={onConnect}
-                  className="h-auto rounded-lg py-2.5 text-[13px] font-semibold"
-                >
-                  {connectLabel}
-                </Button>
-                <div className="bg-border h-px" />
-                <div className="text-xs leading-relaxed text-(--fg3)">
-                  Find it in the URL of your points page on the official
-                  site:{' '}
-                  <span className="mono text-(--fg2)">
-                    /entry/&lt;your-id&gt;/event/3
+          <CardHeader className="border-border gap-1 border-b py-4.5">
+            <CardTitle className="text-[22px] font-extrabold tracking-[-0.035em]">
+              Connect your team
+            </CardTitle>
+            <CardDescription className="text-[12.5px] leading-relaxed">
+              Enter your FPL team ID so Scout can pull your squad, transfers and
+              chip history.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3.5 py-4.5">
+            <div className="flex flex-col gap-1.5">
+              <Label
+                htmlFor="team-id"
+                className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase"
+              >
+                Team ID
+              </Label>
+              <Input
+                id="team-id"
+                className="mono border-border bg-muted text-foreground h-auto rounded-lg px-3 py-2.5 text-sm"
+                value={entry}
+                onChange={(e) => onEntryChange(e.target.value)}
+                onKeyDown={onEntryKeyDown}
+                placeholder="e.g. 3842106"
+                inputMode="numeric"
+                // base-ui's Input primitive sets caret-color on the client only
+                // (to draw its own caret) — an expected, benign SSR mismatch.
+                suppressHydrationWarning
+              />
+              {entryError ? (
+                <span data-delta="down" className="text-xs">
+                  {entryError}
+                </span>
+              ) : null}
+              {recentTeamIds.length > 0 ? (
+                <div className="mt-0.5 flex flex-col gap-1.5">
+                  <span className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase">
+                    Recent teams
                   </span>
-                  . Scout only reads public data.
+                  <div className="divide-border border-border bg-muted divide-y overflow-hidden rounded-lg border">
+                    {recentTeamIds.map((id) => (
+                      <div key={id} className="flex items-center">
+                        <Button
+                          variant="ghost"
+                          onClick={() => onSelectRecent(id)}
+                          className="mono text-foreground h-auto flex-1 justify-start rounded-none px-3 py-2.5 text-[13px] font-normal"
+                        >
+                          {id}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => onRemoveRecent(id)}
+                          aria-label={`Remove ${id} from recent teams`}
+                          className="mr-1.5 rounded-md text-(--fg3)"
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-primary text-left text-xs font-medium"
-                >
-                  ← Log in with FPL instead
-                </button>
-              </CardContent>
-            </>
-          )}
+              ) : null}
+            </div>
+            <Button
+              onClick={onConnect}
+              className="h-auto rounded-lg py-2.5 text-[13px] font-semibold"
+            >
+              {connectLabel}
+            </Button>
+            <div className="bg-border h-px" />
+            <div className="text-xs leading-relaxed text-(--fg3)">
+              Find it in the URL of your points page on the official site:{' '}
+              <span className="mono text-(--fg2)">
+                /entry/&lt;your-id&gt;/event/3
+              </span>
+              . Scout only reads public data.
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>

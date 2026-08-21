@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Bricolage_Grotesque, Geist_Mono, Public_Sans } from 'next/font/google'
-import { SessionProvider } from 'next-auth/react'
 import './globals.css'
 
 import QueryProvider from '@/provider/QueryProvider'
@@ -43,9 +42,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       )}
     >
       <body className="flex min-h-full flex-col">
-        <SessionProvider>
-          <QueryProvider>{children}</QueryProvider>
-        </SessionProvider>
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   )

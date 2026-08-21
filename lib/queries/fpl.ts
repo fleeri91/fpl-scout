@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import type {
   Bootstrap,
   ClassicLeague,
@@ -13,38 +13,13 @@ import type {
   H2HLeague,
   H2HLeagueMatches,
   Live,
-  Me,
-  MyTeam,
 } from 'fpl-api'
-
-async function extractError(response: Response): Promise<string> {
-  const data: unknown = await response.json().catch(() => null)
-  if (data && typeof data === 'object' && 'error' in data) {
-    const { error } = data as { error: unknown }
-    if (typeof error === 'string') return error
-  }
-  return `Request failed with ${response.status}`
-}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
 
   if (!response.ok) {
-    throw new Error(await extractError(response))
-  }
-
-  return response.json() as Promise<T>
-}
-
-async function postJson<T>(url: string, body?: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-
-  if (!response.ok) {
-    throw new Error(await extractError(response))
+    throw new Error(`${url} responded with ${response.status}`)
   }
 
   return response.json() as Promise<T>
@@ -64,8 +39,6 @@ export const fplKeys = {
     [...fplKeys.all, 'entry', entryId, 'history'] as const,
   entryEvent: (entryId: number, eventId: number) =>
     [...fplKeys.all, 'entry', entryId, 'event', eventId] as const,
-  me: () => [...fplKeys.all, 'me'] as const,
-  myTeam: (entryId: number) => [...fplKeys.all, 'my-team', entryId] as const,
   classicLeague: (
     leagueId: number,
     options?: {
@@ -155,49 +128,6 @@ export function useEntryEvent(entryId: number, eventId: number) {
     queryFn: () =>
       fetchJson<EntryEvent>(`/api/fpl/entry/${entryId}/event/${eventId}`),
     enabled: Number.isFinite(entryId) && Number.isFinite(eventId),
-  })
-}
-
-// Whether we're logged into an FPL account, and who — driven by the
-// httpOnly session cookie the login route sets. A 401 here just means
-// "not logged in yet", so it's treated as a normal (non-retried) result
-// rather than a transient fetch error.
-export function useMe() {
-  return useQuery({
-    queryKey: fplKeys.me(),
-    queryFn: () => fetchJson<Me>('/api/fpl/me'),
-    retry: false,
-  })
-}
-
-export function useMyTeam(entryId: number, enabled = true) {
-  return useQuery({
-    queryKey: fplKeys.myTeam(entryId),
-    queryFn: () => fetchJson<MyTeam>(`/api/fpl/my-team/${entryId}`),
-    enabled: enabled && Number.isFinite(entryId),
-    retry: false,
-  })
-}
-
-export function useLogin() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (credentials: { email: string; password: string }) =>
-      postJson<{ ok: true }>('/api/fpl/login', credentials),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: fplKeys.me() })
-    },
-  })
-}
-
-export function useLogout() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => postJson<{ ok: true }>('/api/fpl/logout'),
-    onSuccess: () => {
-      queryClient.setQueryData(fplKeys.me(), undefined)
-      queryClient.invalidateQueries({ queryKey: fplKeys.me() })
-    },
   })
 }
 
