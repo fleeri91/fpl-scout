@@ -1,27 +1,27 @@
 .fpl-scout {
-  /* FPL Scout palette */
-  --bg: #09090b;
-  --card: #0e0e11;
-  --card2: #131317;
-  --muted: #18181b;
-  --border: #26262b;
-  --fg: #f4f4f5;
-  --fg2: #a1a1aa;
-  --fg3: #71717a;
-  --accent: oklch(0.78 0.16 165);
-  --accent-fg: #04150f;
-  --pos: oklch(0.76 0.14 165);
-  --neg: oklch(0.68 0.15 32);
-  --d1: oklch(0.42 0.1 165);
-  --d2: oklch(0.4 0.06 190);
-  --d3: oklch(0.36 0.02 260);
-  --d4: oklch(0.42 0.1 40);
-  --d5: oklch(0.48 0.15 25);
-  --d1f: oklch(0.92 0.06 165);
-  --d2f: oklch(0.9 0.04 190);
-  --d3f: #c4c4cc;
-  --d4f: oklch(0.93 0.06 45);
-  --d5f: oklch(0.94 0.08 25);
+  /* FPL Scout palette — warm cream (light, default) */
+  --bg: #efeae0;
+  --card: #f7f4ec;
+  --card2: #e9e3d6;
+  --muted: #e4ddce;
+  --border: #cdc3ae;
+  --fg: #1a1714;
+  --fg2: #4a423a;
+  --fg3: #7c7263;
+  --accent: #3b4a7a;
+  --accent-fg: #f7f4ec;
+  --pos: #1e6b4f;
+  --neg: #b33a16;
+  --d1: #1e6b4f;
+  --d2: #6e9b62;
+  --d3: #c9bfa8;
+  --d4: #d98a3c;
+  --d5: #b33a16;
+  --d1f: #f4f1e8;
+  --d2f: #12281c;
+  --d3f: #3a342a;
+  --d4f: #2a1a08;
+  --d5f: #fbede6;
 
   /* Same palette, expressed as shadcn's semantic tokens, so shadcn/ui
      components (Button, Input, Select, Table, Card, Sheet, Badge, ...)
@@ -44,42 +44,38 @@
   --destructive: var(--neg);
   --input: var(--border);
   --ring: color-mix(in oklch, var(--accent), transparent 50%);
-  --radius: 0.6rem;
+  --radius: 2px;
 
   background: var(--bg);
   color: var(--fg);
-  font-family:
-    'Helvetica Neue',
-    Helvetica,
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-.fpl-scout[data-theme='light'] {
-  --bg: #fafafa;
-  --card: #ffffff;
-  --card2: #f6f6f7;
-  --muted: #f4f4f5;
-  --border: #e4e4e7;
-  --fg: #18181b;
-  --fg2: #52525b;
-  --fg3: #8b8b93;
-  --accent: oklch(0.62 0.14 165);
-  --accent-fg: #ffffff;
-  --pos: oklch(0.52 0.13 165);
-  --neg: oklch(0.55 0.16 30);
-  --d1: oklch(0.9 0.07 165);
-  --d2: oklch(0.93 0.04 195);
-  --d3: #eeeef1;
-  --d4: oklch(0.92 0.07 55);
-  --d5: oklch(0.88 0.1 25);
-  --d1f: oklch(0.38 0.1 165);
-  --d2f: oklch(0.38 0.06 200);
-  --d3f: #52525b;
-  --d4f: oklch(0.42 0.1 45);
-  --d5f: oklch(0.44 0.14 25);
+.fpl-scout[data-theme='dark'] {
+  /* Warm dark brown */
+  --bg: #15120e;
+  --card: #1c1813;
+  --card2: #241f18;
+  --muted: #2a241c;
+  --border: #3d3529;
+  --fg: #f4efe3;
+  --fg2: #b8ae9c;
+  --fg3: #8a7f6d;
+  --accent: #93a4d8;
+  --accent-fg: #14171f;
+  --pos: #5fbf92;
+  --neg: #e4784e;
+  --d1: #2c7a59;
+  --d2: #4e7a48;
+  --d3: #3b342a;
+  --d4: #a9682c;
+  --d5: #8f3418;
+  --d1f: #eaf7f0;
+  --d2f: #edf5e9;
+  --d3f: #c6bca8;
+  --d4f: #fcf1e4;
+  --d5f: #fbede6;
 }
 
 .fpl-scout a {
@@ -144,7 +140,16 @@
 
 .fpl-scout .mono {
   font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
+  font-feature-settings: 'tnum';
+}
+
+.fpl-scout h1 {
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
+}
+
+.fpl-scout [data-d] {
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
 }
 
 .fpl-scout ::-webkit-scrollbar {
@@ -153,7 +158,7 @@
 }
 .fpl-scout ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 9px;
+  border-radius: 2px;
 }
 .fpl-scout ::-webkit-scrollbar-track {
   background: transparent;

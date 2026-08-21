@@ -1,15 +1,21 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono, Inter } from 'next/font/google'
+import { Bricolage_Grotesque, Geist_Mono, Public_Sans } from 'next/font/google'
 import './globals.css'
 
 import QueryProvider from '@/provider/QueryProvider'
 import { cn } from '@/lib/utils'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const publicSans = Public_Sans({
   subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-sans',
+})
+
+const bricolageGrotesque = Bricolage_Grotesque({
+  subsets: ['latin'],
+  weight: ['500', '700', '800'],
+  variable: '--font-heading',
 })
 
 const geistMono = Geist_Mono({
@@ -29,10 +35,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       className={cn(
         'h-full',
         'antialiased',
-        geistSans.variable,
         geistMono.variable,
         'font-sans',
-        inter.variable
+        publicSans.variable,
+        bricolageGrotesque.variable
       )}
     >
       <body className="flex min-h-full flex-col">
