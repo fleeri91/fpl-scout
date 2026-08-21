@@ -19,14 +19,17 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import '@/components/fpl-scout.css'
 import { ConnectScreen } from '@/components/ConnectScreen'
-import { Header } from '@/components/Header'
-import { PlayerSheet } from '@/components/PlayerSheet'
-import { Sidebar } from '@/components/Sidebar'
+import { Dossier } from '@/components/Dossier'
+import { Masthead } from '@/components/Masthead'
+import { PageFooter } from '@/components/PageFooter'
 import {
   buildAlerts,
   buildChipStatus,
+  buildCrowdData,
   buildFixturesByTeamId,
-  buildTransferSuggestions,
+  buildHeadToHead,
+  buildLeads,
+  buildPositionAudit,
   computeFixturePlanner,
   getCurrentEvent,
   mapElementToPlayer,
@@ -38,14 +41,16 @@ import {
   useRecentTeamIds,
 } from '@/components/recentTeams'
 import { ChipsScreen } from '@/components/screens/ChipsScreen'
-import { DashboardScreen } from '@/components/screens/DashboardScreen'
-import {
-  ExplorerScreen,
-  type ExplorerFilters,
-} from '@/components/screens/ExplorerScreen'
+import { CrowdScreen } from '@/components/screens/CrowdScreen'
 import { FixturesScreen } from '@/components/screens/FixturesScreen'
-import { TransfersScreen } from '@/components/screens/TransfersScreen'
-import type { Player, Screen } from '@/components/types'
+import {
+  FormBookScreen,
+  type FormBookFilters,
+} from '@/components/screens/FormBookScreen'
+import { HeadToHeadScreen } from '@/components/screens/HeadToHeadScreen'
+import { MatchdayScreen } from '@/components/screens/MatchdayScreen'
+import { TeamSheetScreen } from '@/components/screens/TeamSheetScreen'
+import { PAGES, type Player } from '@/components/types'
 
 function pad(n: number) {
   return String(n).padStart(2, '0')
@@ -78,8 +83,7 @@ export default function Home() {
   const [entryError, setEntryError] = useState('')
   const [teamId, setTeamId] = useState<string | null>(null)
 
-  const [navOpen, setNavOpen] = useState(true)
-  const [screen, setScreen] = useState<Screen>('dash')
+  const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])
   const [now, setNow] = useState(() => Date.now())
@@ -87,9 +91,10 @@ export default function Home() {
   const [windowLen, setWindowLen] = useState(3)
   const recentTeamIds = useRecentTeamIds()
 
-  const [filters, setFilters] = useState<ExplorerFilters>({
+  const [filters, setFilters] = useState<FormBookFilters>({
     pos: 'All',
-    team: 'All teams',
+    avail: 'All',
+    team: 'All clubs',
     maxPrice: 15,
     maxOwn: 60,
     sortKey: 'xgi',
@@ -115,6 +120,25 @@ export default function Home() {
       delete document.body.dataset.theme
     }
   }, [])
+
+  // Arrow keys page the sliding ledger, Escape is handled by the Dossier's
+  // own Sheet/Dialog. Skipped while a form control has focus or a modifier
+  // is held, and suppressed entirely while the Dossier is open so the
+  // reader isn't paged out from under them mid-comparison.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (target && /INPUT|SELECT|TEXTAREA/.test(target.tagName)) return
+      if (selectedId != null) return
+      if (e.key === 'ArrowRight') setPage((p) => Math.min(PAGES.length - 1, p + 1))
+      else if (e.key === 'ArrowLeft') setPage((p) => Math.max(0, p - 1))
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId])
 
   const numericTeamId = teamId ? Number(teamId) : NaN
 
@@ -147,7 +171,7 @@ export default function Home() {
     setEntry(v)
     setEntryError('')
     setSelectedId(null)
-    setScreen('dash')
+    setPage(0)
     setTeamId(v)
     addRecentTeamId(v, recentTeamIds)
   }
@@ -168,7 +192,7 @@ export default function Home() {
   const disconnect = () => {
     setTeamId(null)
     setEntry('')
-    setScreen('dash')
+    setPage(0)
     setSelectedId(null)
   }
 
@@ -215,7 +239,6 @@ export default function Home() {
     ? `Lowest average difficulty across any ${effectiveWindowLen} consecutive gameweeks in the GW${currentEvent.id}–GW${currentEvent.id + horizon - 1} range.`
     : ''
   const cellW = horizon <= 6 ? 'auto' : horizon <= 24 ? '64px' : '72px'
-  const cellFont = '11px'
 
   const fixturePlanner = useMemo(() => {
     if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent)
@@ -259,11 +282,23 @@ export default function Home() {
       .filter((p): p is Player => !!p)
   }, [entryEventQuery.data, playersById])
 
+  const squad = useMemo(() => [...xi, ...bench], [xi, bench])
+  const squadIds = useMemo(() => new Set(squad.map((p) => p.id)), [squad])
+  const squadTeams = useMemo(() => squad.map((p) => p.team), [squad])
+
+  const captainId =
+    entryEventQuery.data?.picks.find((p) => p.is_captain)?.element ?? null
+  const viceId =
+    entryEventQuery.data?.picks.find((p) => p.is_vice_captain)?.element ??
+    null
+
   const squadElements = useMemo(() => {
     if (!bootstrapQuery.data || !entryEventQuery.data) return []
-    const squadIds = new Set(entryEventQuery.data.picks.map((p) => p.element))
+    const squadElementIdSet = new Set(
+      entryEventQuery.data.picks.map((p) => p.element)
+    )
     return (bootstrapQuery.data.elements as FplElement[]).filter((el) =>
-      squadIds.has(el.id)
+      squadElementIdSet.has(el.id)
     )
   }, [bootstrapQuery.data, entryEventQuery.data])
 
@@ -311,13 +346,25 @@ export default function Home() {
           ? `▲ ${rankDelta.toLocaleString('en-GB')} places`
           : `▼ ${Math.abs(rankDelta).toLocaleString('en-GB')} places`
 
-  const transfers = useMemo(() => {
+  const posAudit = useMemo(
+    () => buildPositionAudit(xi, allPlayers, squadIds),
+    [xi, allPlayers, squadIds]
+  )
+
+  const crowd = useMemo(
+    () => buildCrowdData(allPlayers, squadIds),
+    [allPlayers, squadIds]
+  )
+
+  const headToHead = useMemo(() => {
     if (xi.length === 0 || allPlayers.length === 0) return []
-    const squadIds = new Set(
-      entryEventQuery.data?.picks.map((p) => p.element) ?? []
-    )
-    return buildTransferSuggestions(xi, allPlayers, squadIds, bankM)
-  }, [xi, allPlayers, entryEventQuery.data, bankM])
+    return buildHeadToHead(xi, allPlayers, squadIds, bankM)
+  }, [xi, allPlayers, squadIds, bankM])
+
+  const leads = useMemo(
+    () => buildLeads(headToHead, chips, posAudit),
+    [headToHead, chips, posAudit]
+  )
 
   const seasonLabel = useMemo(() => {
     if (!bootstrapQuery.data?.events.length) return ''
@@ -338,28 +385,6 @@ export default function Home() {
   const mm = Math.floor((diffSecs % 3600) / 60)
   const ss = diffSecs % 60
   const countdown = `${d}d ${pad(hh)}:${pad(mm)}:${pad(ss)}`
-
-  const initials = useMemo(() => {
-    const p = entryQuery.data
-    if (!p) return 'FS'
-    return `${p.player_first_name.charAt(0)}${p.player_last_name.charAt(0)}`.toUpperCase()
-  }, [entryQuery.data])
-
-  const titles: Record<Screen, [string, string]> = {
-    dash: ['Dashboard', 'Your squad at a glance'],
-    explorer: [
-      'Player Explorer',
-      `${allPlayers.length} players · season stats`,
-    ],
-    fixtures: [
-      'Fixture Planner',
-      fixturePlanner.gws.length
-        ? `${fixturePlanner.gws[0]} – ${fixturePlanner.gws[fixturePlanner.gws.length - 1]} difficulty matrix`
-        : '',
-    ],
-    chips: ['Chip Strategy', 'Usage this season'],
-    transfers: ['Transfer Suggestions', 'Ranked by xGI per million'],
-  }
 
   if (!teamId) {
     return (
@@ -443,22 +468,42 @@ export default function Home() {
   // so a team can be perfectly valid while its current-event picks 404.
   const picksAvailable = !!entryEventQuery.data
   const picksUnavailableNotice = (
-    <div className="p-5.5">
-      <Card className="border-border rounded-xl p-6 text-center text-[13px] leading-relaxed text-(--fg2)">
-        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API only
-        exposes a gameweek&apos;s squad once its deadline has passed. Check back
-        after{' '}
+    <div className="flex h-full items-center justify-center px-7.5">
+      <div className="max-w-[46ch] text-center text-[13px] leading-relaxed text-(--fg3) italic">
+        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API
+        only exposes a gameweek&apos;s squad once its deadline has passed.
+        Check back after{' '}
         {new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
           weekday: 'short',
           hour: '2-digit',
           minute: '2-digit',
         })}
         .
-      </Card>
+      </div>
     </div>
   )
 
-  const summary = [
+  const glance = [
+    {
+      label: `GW${currentEvent.id} deadline`,
+      value: `${d}d ${pad(hh)}h`,
+      note: new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      dir: 'flat' as const,
+    },
+    {
+      label: 'Overall rank',
+      value: overallRank ? overallRank.toLocaleString('en-GB') : '—',
+      note: rankNote,
+      dir: rankNote.startsWith('▲')
+        ? ('up' as const)
+        : rankNote.startsWith('▼')
+          ? ('down' as const)
+          : ('flat' as const),
+    },
     {
       label: 'Squad value',
       value: `£${valueM.toFixed(1)}m`,
@@ -474,125 +519,130 @@ export default function Home() {
           : `${eventTransfers} transfer${eventTransfers > 1 ? 's' : ''} made`,
       dir: 'flat' as const,
     },
-    {
-      label: 'Overall rank',
-      value: overallRank ? overallRank.toLocaleString('en-GB') : '—',
-      note: rankNote,
-      dir: rankNote.startsWith('▲')
-        ? ('up' as const)
-        : rankNote.startsWith('▼')
-          ? ('down' as const)
-          : ('flat' as const),
-    },
-    {
-      label: `GW${currentEvent.id} deadline`,
-      value: `${d}d ${pad(hh)}h`,
-      note: new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
-        weekday: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      dir: 'flat' as const,
-    },
   ]
 
   const sel = selectedId != null ? playersById.get(selectedId) : null
-  const [title, subtitle] = titles[screen]
+  const pageKey = PAGES[page].key
 
   return (
     <div className="fpl-scout min-h-screen" data-theme="dark">
-      <div className="flex min-h-screen">
-        <Sidebar
-          screen={screen}
-          navOpen={navOpen}
-          deadlineLabel={`GW${currentEvent.id} deadline`}
+      <div className="flex h-screen flex-col">
+        <Masthead
+          gw={currentEvent.id}
+          season={seasonLabel}
           countdown={countdown}
-          onNavigate={setScreen}
-          onToggleNav={() => setNavOpen((v) => !v)}
+          teamId={teamId}
+          pages={PAGES}
+          activePage={pageKey}
+          onNavigate={(key) =>
+            setPage(PAGES.findIndex((p) => p.key === key))
+          }
+          onDisconnect={disconnect}
         />
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <Header
-            title={title}
-            subtitle={subtitle}
-            teamId={teamId}
-            gameweekLabel={`Gameweek ${currentEvent.id}${seasonLabel ? ` · ${seasonLabel}` : ''}`}
-            initials={initials}
-            onDisconnect={disconnect}
-          />
-
-          {screen === 'dash' &&
-            (picksAvailable ? (
-              <DashboardScreen
-                summary={summary}
-                xi={xi}
-                bench={bench}
-                alerts={alerts}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <div
+            className="flex h-full"
+            style={{
+              width: '700%',
+              transform: `translateX(-${page * (100 / 7)}%)`,
+              transition: 'transform .42s cubic-bezier(.4,0,.2,1)',
+            }}
+          >
+            <div style={{ width: '14.2857%', height: '100%' }}>
+              {picksAvailable ? (
+                <MatchdayScreen
+                  glance={glance}
+                  leads={leads}
+                  alerts={alerts}
+                  onNavigate={(key) =>
+                    setPage(PAGES.findIndex((p) => p.key === key))
+                  }
+                  onDismissAlert={(id) => setDismissed((ds) => [...ds, id])}
+                />
+              ) : (
+                picksUnavailableNotice
+              )}
+            </div>
+            <div style={{ width: '14.2857%', height: '100%' }}>
+              {picksAvailable ? (
+                <TeamSheetScreen
+                  xi={xi}
+                  bench={bench}
+                  captainId={captainId}
+                  viceId={viceId}
+                  posAudit={posAudit}
+                  onOpenPlayer={setSelectedId}
+                />
+              ) : (
+                picksUnavailableNotice
+              )}
+            </div>
+            <div style={{ width: '14.2857%', height: '100%' }}>
+              <FormBookScreen
+                players={allPlayers}
+                teams={teams}
+                squadIds={squadIds}
+                filters={filters}
+                onFiltersChange={(patch) =>
+                  setFilters((f) => ({ ...f, ...patch }))
+                }
+                onSort={(key) =>
+                  setFilters((f) =>
+                    f.sortKey === key
+                      ? { ...f, sortDir: f.sortDir === 1 ? -1 : 1 }
+                      : { ...f, sortKey: key, sortDir: -1 }
+                  )
+                }
                 onOpenPlayer={setSelectedId}
-                onDismissAlert={(id) => setDismissed((d) => [...d, id])}
               />
-            ) : (
-              picksUnavailableNotice
-            ))}
-          {screen === 'explorer' && (
-            <ExplorerScreen
-              players={allPlayers}
-              teams={teams}
-              filters={filters}
-              onFiltersChange={(patch) =>
-                setFilters((f) => ({ ...f, ...patch }))
-              }
-              onSort={(key) =>
-                setFilters((f) =>
-                  f.sortKey === key
-                    ? { ...f, sortDir: f.sortDir === 1 ? -1 : 1 }
-                    : { ...f, sortKey: key, sortDir: -1 }
-                )
-              }
-              onReset={() =>
-                setFilters({
-                  pos: 'All',
-                  team: 'All teams',
-                  maxPrice: 15,
-                  maxOwn: 60,
-                  sortKey: 'xgi',
-                  sortDir: -1,
-                })
-              }
-              onOpenPlayer={setSelectedId}
-            />
-          )}
-          {screen === 'fixtures' && (
-            <FixturesScreen
-              gws={fixturePlanner.gws}
-              matrix={fixturePlanner.matrix}
-              bestWindows={fixturePlanner.bestWindows}
-              windowLen={effectiveWindowLen}
-              windowMax={windowMax}
-              windowLenLabel={windowLenLabel}
-              onWindowLenChange={setWindowLen}
-              horizon={horizon}
-              horizonMax={horizonMax}
-              horizonLabel={horizonLabel}
-              onHorizonChange={setHorizon}
-              windowNote={windowNote}
-              cellW={cellW}
-              cellFont={cellFont}
-            />
-          )}
-          {screen === 'chips' && <ChipsScreen chips={chips} />}
-          {screen === 'transfers' &&
-            (picksAvailable ? (
-              <TransfersScreen transfers={transfers} />
-            ) : (
-              picksUnavailableNotice
-            ))}
-        </main>
+            </div>
+            <div style={{ width: '14.2857%', height: '100%' }}>
+              <FixturesScreen
+                gws={fixturePlanner.gws}
+                matrix={fixturePlanner.matrix}
+                bestWindows={fixturePlanner.bestWindows}
+                windowLen={effectiveWindowLen}
+                windowMax={windowMax}
+                windowLenLabel={windowLenLabel}
+                onWindowLenChange={setWindowLen}
+                horizon={horizon}
+                horizonMax={horizonMax}
+                horizonLabel={horizonLabel}
+                onHorizonChange={setHorizon}
+                windowNote={windowNote}
+                cellW={cellW}
+                squadTeams={squadTeams}
+              />
+            </div>
+            <div style={{ width: '14.2857%', height: '100%' }}>
+              <CrowdScreen crowd={crowd} onOpenPlayer={setSelectedId} />
+            </div>
+            <div style={{ width: '14.2857%', height: '100%' }}>
+              <ChipsScreen chips={chips} />
+            </div>
+            <div style={{ width: '14.2857%', height: '100%' }}>
+              {picksAvailable ? (
+                <HeadToHeadScreen cases={headToHead} />
+              ) : (
+                picksUnavailableNotice
+              )}
+            </div>
+          </div>
+        </div>
 
-        {sel ? (
-          <PlayerSheet player={sel} onClose={() => setSelectedId(null)} />
-        ) : null}
+        <PageFooter
+          pageLabel={`${PAGES[page].roman} of VII`}
+          canPrev={page > 0}
+          canNext={page < PAGES.length - 1}
+          onPrev={() => setPage((p) => Math.max(0, p - 1))}
+          onNext={() => setPage((p) => Math.min(PAGES.length - 1, p + 1))}
+        />
       </div>
+
+      {sel ? (
+        <Dossier player={sel} squad={squad} onClose={() => setSelectedId(null)} />
+      ) : null}
     </div>
   )
 }

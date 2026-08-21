@@ -1,27 +1,32 @@
 .fpl-scout {
-  /* FPL Scout palette — warm cream (light, default) */
-  --bg: #efeae0;
-  --card: #f7f4ec;
-  --card2: #e9e3d6;
-  --muted: #e4ddce;
-  --border: #cdc3ae;
-  --fg: #1a1714;
-  --fg2: #4a423a;
-  --fg3: #7c7263;
-  --accent: #3b4a7a;
-  --accent-fg: #f7f4ec;
-  --pos: #1e6b4f;
-  --neg: #b33a16;
-  --d1: #1e6b4f;
-  --d2: #6e9b62;
-  --d3: #c9bfa8;
-  --d4: #d98a3c;
-  --d5: #b33a16;
-  --d1f: #f4f1e8;
-  --d2f: #12281c;
-  --d3f: #3a342a;
-  --d4f: #2a1a08;
-  --d5f: #fbede6;
+  /* FPL Scout palette — v3 "weekly ledger", dark forest green + orange mark */
+  --bg: #0a1a13;
+  --card: #0f2318;
+  --card2: #153020;
+  --muted: #153020;
+  --border: #1e4029;
+  --border2: #2e5a3b;
+  --fg: #f1f5ec;
+  --fg2: #a6beac;
+  --fg3: #6c8874;
+  --accent: #f0a32a;
+  --accent-fg: #14210c;
+  --pos: #8fc96b;
+  --neg: #d2542f;
+  --warn: #e8c24a;
+  --d1: #2f6b3f;
+  --d2: #47804a;
+  --d3: #1b2e22;
+  --d4: #a2622a;
+  --d5: #c2452a;
+  --d1f: #eaf6ec;
+  --d2f: #eef6e9;
+  --d3f: #93a899;
+  --d4f: #f9eedf;
+  --d5f: #fce9e3;
+  --r-card: 8px;
+  --r-ctl: 6px;
+  --r-chip: 4px;
 
   /* Same palette, expressed as shadcn's semantic tokens, so shadcn/ui
      components (Button, Input, Select, Table, Card, Sheet, Badge, ...)
@@ -53,29 +58,33 @@
 }
 
 .fpl-scout[data-theme='dark'] {
-  /* Warm dark brown */
-  --bg: #15120e;
-  --card: #1c1813;
-  --card2: #241f18;
-  --muted: #2a241c;
-  --border: #3d3529;
-  --fg: #f4efe3;
-  --fg2: #b8ae9c;
-  --fg3: #8a7f6d;
-  --accent: #93a4d8;
-  --accent-fg: #14171f;
-  --pos: #5fbf92;
-  --neg: #e4784e;
-  --d1: #2c7a59;
-  --d2: #4e7a48;
-  --d3: #3b342a;
-  --d4: #a9682c;
-  --d5: #8f3418;
-  --d1f: #eaf7f0;
-  --d2f: #edf5e9;
-  --d3f: #c6bca8;
-  --d4f: #fcf1e4;
-  --d5f: #fbede6;
+  /* The app is always rendered in this (only) theme today — see the
+     data-theme="dark" set in app/page.tsx — so it mirrors the block above
+     rather than diverging from it. */
+  --bg: #0a1a13;
+  --card: #0f2318;
+  --card2: #153020;
+  --muted: #153020;
+  --border: #1e4029;
+  --border2: #2e5a3b;
+  --fg: #f1f5ec;
+  --fg2: #a6beac;
+  --fg3: #6c8874;
+  --accent: #f0a32a;
+  --accent-fg: #14210c;
+  --pos: #8fc96b;
+  --neg: #d2542f;
+  --warn: #e8c24a;
+  --d1: #2f6b3f;
+  --d2: #47804a;
+  --d3: #1b2e22;
+  --d4: #a2622a;
+  --d5: #c2452a;
+  --d1f: #eaf6ec;
+  --d2f: #eef6e9;
+  --d3f: #93a899;
+  --d4f: #f9eedf;
+  --d5f: #fce9e3;
 }
 
 .fpl-scout a {
@@ -132,7 +141,7 @@
   background: var(--pos);
 }
 .fpl-scout [data-status='risk'] {
-  background: oklch(0.75 0.13 85);
+  background: var(--warn);
 }
 .fpl-scout [data-status='out'] {
   background: var(--neg);
@@ -140,7 +149,7 @@
 
 .fpl-scout .mono {
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-heading), var(--font-sans), sans-serif;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-feature-settings: 'tnum';
 }
 
@@ -149,7 +158,57 @@
 }
 
 .fpl-scout [data-d] {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* v3 "weekly ledger" type system */
+.fpl-scout .dsp {
   font-family: var(--font-heading), var(--font-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.004em;
+  text-transform: uppercase;
+}
+.fpl-scout .ed {
+  font-family: var(--font-editorial), Georgia, serif;
+  font-weight: 400;
+}
+.fpl-scout .drop::first-letter {
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 800;
+  font-size: 3.4em;
+  line-height: 0.82;
+  float: left;
+  padding: 2px 8px 0 0;
+  color: var(--accent);
+}
+.fpl-scout .lbl {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--fg3);
+}
+.fpl-scout .fig {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+.fpl-scout .sp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r-chip);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--fg3);
+  font-family: var(--font-geist-mono), monospace;
+  vertical-align: middle;
 }
 
 .fpl-scout ::-webkit-scrollbar {

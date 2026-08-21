@@ -11,9 +11,11 @@ import type {
 import type {
   Delta,
   FixtureCell,
+  PageKey,
   PlayerStatus,
   Player,
   Position,
+  SetPieceMark,
 } from './types'
 
 // `getTeamShortName`/`getElementTypeLabel` are called per-fixture and
@@ -122,6 +124,21 @@ function defaultNote(element: FplElement): string {
   return `${num(element.points_per_game).toFixed(1)} pts/game · ${element.minutes} mins this season.`
 }
 
+function buildSetPieces(element: FplElement): SetPieceMark[] {
+  const marks: SetPieceMark[] = []
+  if (element.penalties_order === 1) {
+    marks.push({ mark: 'P', title: 'First-choice penalty taker' })
+  } else if (element.penalties_order === 2) {
+    marks.push({ mark: 'P', title: 'Second-choice penalty taker' })
+  }
+  if (element.corners_and_indirect_freekicks_order === 1) {
+    marks.push({ mark: 'C', title: 'Takes corners and indirect free kicks' })
+  } else if (element.corners_and_indirect_freekicks_order === 2) {
+    marks.push({ mark: 'C', title: 'Second-choice for corners' })
+  }
+  return marks
+}
+
 export function mapElementToPlayer(
   element: FplElement,
   bootstrap: Bootstrap,
@@ -148,6 +165,18 @@ export function mapElementToPlayer(
     priceDir: moveN > 0.05 ? 'up' : moveN < -0.05 ? 'down' : ('flat' as const),
     next: fixturesByTeamId[element.team]?.slice(0, 5) ?? [],
     next3: fixturesByTeamId[element.team]?.slice(0, 3) ?? [],
+    ep: num(element.ep_next),
+    ppg: num(element.points_per_game),
+    bonus: element.bonus,
+    bps: element.bps,
+    ict: [num(element.influence), num(element.creativity), num(element.threat)],
+    chance:
+      element.chance_of_playing_next_round == null
+        ? 100
+        : element.chance_of_playing_next_round,
+    setPieces: buildSetPieces(element),
+    transfersInEvent: element.transfers_in_event,
+    transfersOutEvent: element.transfers_out_event,
   }
 }
 
@@ -583,38 +612,6 @@ export function buildChipStatus(
   })
 }
 
-// ---- Transfer suggestions ----
-
-export interface TransferStatRow {
-  k: string
-  v: string
-  dir: Delta
-}
-
-export interface TransferCardView {
-  name: string
-  team: string
-  pos: string
-  price: string
-  tag: string
-  tagFg: string
-  border: string
-  bg: string
-  cta: string
-  ctaBg: string
-  ctaBorder: string
-  ctaFg: string
-  stats: TransferStatRow[]
-  next: FixtureCell[]
-}
-
-export interface TransferSectionView {
-  outName: string
-  bank: string
-  rationale: string
-  cards: TransferCardView[]
-}
-
 function xgiPer90(p: Player): number {
   return p.mins > 0 ? p.xgi / (p.mins / 90) : 0
 }
@@ -623,110 +620,626 @@ function avgFdr(p: Player): number {
   return p.next.length ? p.next.reduce((s, f) => s + f.d, 0) / p.next.length : 0
 }
 
-export function buildTransferSuggestions(
+function surname(name: string): string {
+  const parts = name.trim().split(' ')
+  return parts[parts.length - 1]
+}
+
+// ---- Head to head ----
+
+export interface HeadToHeadHead {
+  name: string
+  sub: string
+  tag: string
+  tagFg: string
+}
+
+export interface HeadToHeadCell {
+  v: string
+  fg: string
+}
+
+export interface HeadToHeadMeasureRow {
+  k: string
+  cells: HeadToHeadCell[]
+}
+
+export interface HeadToHeadVerdict {
+  text: string
+  fg: string
+}
+
+export interface HeadToHeadCase {
+  outName: string
+  bank: string
+  ft: string
+  rationale: string
+  heads: HeadToHeadHead[]
+  measures: HeadToHeadMeasureRow[]
+  fixtureCells: { next: FixtureCell[] }[]
+  verdicts: HeadToHeadVerdict[]
+}
+
+function h2hLine(
+  k: string,
+  candidates: Player[],
+  f: (p: Player) => number,
+  fmt: (n: number) => string,
+  better?: (v: number, out: number) => boolean
+): HeadToHeadMeasureRow {
+  const out = f(candidates[0])
+  return {
+    k,
+    cells: candidates.map((p, i) => {
+      const v = f(p)
+      return {
+        v: fmt(v),
+        fg:
+          i === 0
+            ? 'var(--fg2)'
+            : better
+              ? better(v, out)
+                ? 'var(--pos)'
+                : 'var(--neg)'
+              : 'var(--fg)',
+      }
+    }),
+  }
+}
+
+function mkHeadToHeadCase(
+  outPlayer: Player,
+  alternatives: Player[],
+  bankM: number
+): HeadToHeadCase {
+  const set4 = [outPlayer, ...alternatives]
+
+  const heads: HeadToHeadHead[] = set4.map((p, i) => ({
+    name: p.name,
+    sub: `${p.team} · ${p.pos} · £${p.price.toFixed(1)}m`,
+    tag: i === 0 ? 'Under review' : i === 1 ? 'Recommended' : 'Alternative',
+    tagFg: i === 1 ? 'var(--accent)' : 'var(--fg3)',
+  }))
+
+  const measures: HeadToHeadMeasureRow[] = [
+    h2hLine('Expected points next round', set4, (p) => p.ep, (n) => n.toFixed(1), (v, o) => v > o),
+    h2hLine('Expected involvement', set4, (p) => p.xgi, (n) => n.toFixed(2), (v, o) => v > o),
+    h2hLine('Per ninety', set4, xgiPer90, (n) => n.toFixed(2), (v, o) => v > o),
+    h2hLine('Points per game', set4, (p) => p.ppg, (n) => n.toFixed(1), (v, o) => v > o),
+    h2hLine('Bonus points system', set4, (p) => p.bps, (n) => n.toFixed(0), (v, o) => v > o),
+    h2hLine('Threat index', set4, (p) => p.ict[2], (n) => n.toFixed(0), (v, o) => v > o),
+    h2hLine('Chance of playing', set4, (p) => p.chance, (n) => `${n.toFixed(0)}%`, (v, o) => v >= o),
+    h2hLine('Price', set4, (p) => p.price, (n) => `£${n.toFixed(1)}m`, (v, o) => v <= o),
+    h2hLine('Owned', set4, (p) => p.own, (n) => `${n.toFixed(1)}%`),
+    h2hLine('Mean difficulty, next five', set4, avgFdr, (n) => n.toFixed(1), (v, o) => v < o),
+  ]
+
+  const fixtureCells = set4.map((p) => ({ next: p.next }))
+
+  const verdicts: HeadToHeadVerdict[] = set4.map((p, i) => {
+    if (i === 0) return { text: 'Sell', fg: 'var(--fg3)' }
+    if (i === 1) {
+      const dP = p.price - outPlayer.price
+      const text =
+        dP < -0.05
+          ? `Frees up £${Math.abs(dP).toFixed(1)}m, and the stronger pick`
+          : dP > 0.05
+            ? `Costs £${dP.toFixed(1)}m more, but clearly stronger`
+            : 'Same price, clearly stronger'
+      return { text, fg: 'var(--accent)' }
+    }
+    const text =
+      p.chance < 100
+        ? 'Alternative, but a fitness doubt'
+        : p.setPieces.length > 0
+          ? 'Alternative, and on set pieces'
+          : 'Alternative at a similar budget'
+    return { text, fg: 'var(--fg3)' }
+  })
+
+  return {
+    outName: outPlayer.name,
+    bank: `£${bankM.toFixed(1)}m`,
+    ft: 'one free transfer',
+    rationale: `Lowest xGI per £m among your starting XI at ${outPlayer.pos}.`,
+    heads,
+    measures,
+    fixtureCells,
+    verdicts,
+  }
+}
+
+export function buildHeadToHead(
   squadStarters: Player[],
   allPlayers: Player[],
   squadIds: Set<number>,
   bankM: number
-): TransferSectionView[] {
+): HeadToHeadCase[] {
   const ranked = [...squadStarters].sort(
     (a, b) => a.xgi / Math.max(a.price, 0.1) - b.xgi / Math.max(b.price, 0.1)
   )
   const worst = ranked.slice(0, 2)
 
-  return worst.map((o) => {
-    const budget = o.price + bankM
-    const alternatives = allPlayers
-      .filter(
+  return worst
+    .map((o) => {
+      const budget = o.price + bankM
+      const alternatives = allPlayers
+        .filter(
+          (p) =>
+            p.pos === o.pos &&
+            !squadIds.has(p.id) &&
+            p.price <= budget &&
+            p.status === 'ok'
+        )
+        .sort((a, b) => b.xgi - a.xgi)
+        .slice(0, 3)
+      return alternatives.length > 0
+        ? mkHeadToHeadCase(o, alternatives, bankM)
+        : null
+    })
+    .filter((c): c is HeadToHeadCase => c !== null)
+}
+
+// ---- Team sheet: position audit ----
+
+export interface PositionAuditRow {
+  pos: Position
+  v: string
+  fg: string
+  note: string
+  gapValue: number
+}
+
+// Starters only, benchmarked against the best affordable eleven at that
+// spend — bench fodder and injuries would otherwise invent a deficit.
+export function buildPositionAudit(
+  xi: Player[],
+  allPlayers: Player[],
+  squadIds: Set<number>
+): PositionAuditRow[] {
+  const positions: Position[] = ['GKP', 'DEF', 'MID', 'FWD']
+
+  return positions
+    .map((pos): PositionAuditRow | null => {
+      const mine = xi.filter((p) => p.pos === pos)
+      if (mine.length === 0) return null
+
+      const spend = mine.reduce((a, p) => a + p.price, 0)
+      const epSum = mine.reduce((a, p) => a + p.ep, 0)
+      const affordable = allPlayers
+        .filter((p) => p.pos === pos && p.chance > 0)
+        .sort((a, b) => b.ep - a.ep)
+
+      const best: Player[] = []
+      let budget = spend
+      for (const p of affordable) {
+        if (best.length >= mine.length) break
+        const reserve = (mine.length - best.length - 1) * 4.0
+        if (p.price <= budget - reserve) {
+          best.push(p)
+          budget -= p.price
+        }
+      }
+
+      const gap = epSum - best.reduce((a, p) => a + p.ep, 0)
+      const weakest = [...mine].sort((a, b) => a.ep - b.ep)[0]
+      const upgrade = affordable.find(
         (p) =>
-          p.pos === o.pos &&
           !squadIds.has(p.id) &&
-          p.price <= budget &&
-          p.status === 'ok'
+          p.price <= weakest.price + 0.6 &&
+          p.ep > weakest.ep + 0.5
       )
-      .sort((a, b) => b.xgi - a.xgi)
-      .slice(0, 3)
 
-    const base: TransferCardView = {
-      name: o.name,
-      team: o.team,
-      pos: o.pos,
-      price: o.price.toFixed(1),
-      tag: 'Current',
-      tagFg: 'var(--fg3)',
-      border: 'var(--border)',
-      bg: 'var(--card2)',
-      cta: 'Keep',
-      ctaBg: 'transparent',
-      ctaBorder: 'var(--border)',
-      ctaFg: 'var(--fg2)',
-      stats: [
-        { k: 'xGI / 90', v: xgiPer90(o).toFixed(2), dir: 'flat' },
-        { k: 'xG', v: o.xg.toFixed(2), dir: 'flat' },
-        { k: 'xA', v: o.xa.toFixed(2), dir: 'flat' },
-        { k: 'Form', v: o.form.toFixed(1), dir: 'flat' },
-        { k: 'Minutes', v: String(o.mins), dir: 'flat' },
-        { k: 'Next 5 avg FDR', v: avgFdr(o).toFixed(1), dir: 'flat' },
-      ],
-      next: o.next,
-    }
-
-    const oFdr = avgFdr(o)
-    const opts: TransferCardView[] = alternatives.map((p, idx) => {
-      const dP = +(p.price - o.price).toFixed(1)
-      const dX = +(p.xgi - o.xgi).toFixed(2)
-      const fdr = avgFdr(p)
-      const rec = idx === 0
       return {
-        name: p.name,
-        team: p.team,
-        pos: p.pos,
-        price: p.price.toFixed(1),
-        tag: rec ? 'Recommended' : 'Alternative',
-        tagFg: rec ? 'var(--accent)' : 'var(--fg3)',
-        border: rec ? 'var(--accent)' : 'var(--border)',
-        bg: 'var(--card)',
-        cta: rec ? 'Make transfer' : 'Compare',
-        ctaBg: rec ? 'var(--accent)' : 'transparent',
-        ctaBorder: rec ? 'var(--accent)' : 'var(--border)',
-        ctaFg: rec ? 'var(--accent-fg)' : 'var(--fg2)',
-        stats: [
-          {
-            k: 'xGI / 90',
-            v: xgiPer90(p).toFixed(2),
-            dir: dX > 0 ? 'up' : 'down',
-          },
-          {
-            k: 'Price delta',
-            v: (dP > 0 ? '+' : '') + dP.toFixed(1) + 'm',
-            dir: dP < 0 ? 'up' : 'flat',
-          },
-          {
-            k: 'xGI delta',
-            v: (dX > 0 ? '+' : '') + dX.toFixed(2),
-            dir: dX > 0 ? 'up' : 'down',
-          },
-          {
-            k: 'Form',
-            v: p.form.toFixed(1),
-            dir: p.form > o.form ? 'up' : 'down',
-          },
-          { k: 'Ownership', v: p.own.toFixed(1) + '%', dir: 'flat' },
-          {
-            k: 'Next 5 avg FDR',
-            v: fdr.toFixed(1),
-            dir: fdr < oFdr ? 'up' : 'down',
-          },
-        ],
-        next: p.next,
+        pos,
+        v: `${gap >= -0.05 ? '' : '−'}${Math.abs(gap).toFixed(1)} EP`,
+        fg: gap > -1 ? 'var(--pos)' : gap > -2.5 ? 'var(--warn)' : 'var(--neg)',
+        note:
+          gap > -1
+            ? `As strong as the position allows for the £${spend.toFixed(1)}m spent.`
+            : upgrade
+              ? `${weakest.name} is the drag. ${upgrade.name} costs £${(upgrade.price - weakest.price).toFixed(1)}m more for ${(upgrade.ep - weakest.ep).toFixed(1)} expected points.`
+              : `${weakest.name} is the drag, on ${weakest.ep.toFixed(1)} expected points, but nothing better is affordable.`,
+        gapValue: gap,
       }
     })
+    .filter((row): row is PositionAuditRow => row !== null)
+}
 
-    return {
-      outName: o.name,
-      bank: `£${bankM.toFixed(1)}m`,
-      rationale: `Lowest xGI per £m among your starting XI at ${o.pos}.`,
-      cards: [base, ...opts],
-    }
+// ---- Crowd ----
+
+export interface CrowdPulseTile {
+  k: string
+  v: string
+  sub: string
+}
+
+export interface CrowdRow {
+  id: number
+  n: string
+  name: string
+  v: string
+  owned: string
+  ownedFg: string
+}
+
+export interface CrowdList {
+  title: string
+  blurb: string
+  items: CrowdRow[]
+}
+
+export interface CrowdDifferential {
+  id: number
+  name: string
+  team: string
+  own: string
+  xgi: string
+}
+
+export interface CrowdMissing {
+  id: number
+  name: string
+  team: string
+  price: string
+  own: string
+}
+
+export interface CrowdView {
+  pulse: CrowdPulseTile[]
+  lists: CrowdList[]
+  differentials: CrowdDifferential[]
+  missing: CrowdMissing[]
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+export function buildCrowdData(
+  allPlayers: Player[],
+  squadIds: Set<number>
+): CrowdView {
+  const held = (id: number) => squadIds.has(id)
+  const crowdRow = (p: Player, i: number, v: string): CrowdRow => ({
+    id: p.id,
+    n: pad2(i + 1),
+    name: p.name,
+    v,
+    owned: held(p.id) ? 'in your side' : 'not owned',
+    ownedFg: held(p.id) ? 'var(--pos)' : 'var(--fg3)',
   })
+
+  const byIn = [...allPlayers].sort(
+    (a, b) => b.transfersInEvent - a.transfersInEvent
+  )
+  const byOut = [...allPlayers].sort(
+    (a, b) => b.transfersOutEvent - a.transfersOutEvent
+  )
+  const byOwn = [...allPlayers].sort((a, b) => b.own - a.own)
+
+  const mostOwned = byOwn[0]
+  const biggestRiser = byIn[0]
+
+  const pulse: CrowdPulseTile[] = [
+    mostOwned
+      ? {
+          k: 'Most owned',
+          v: mostOwned.name,
+          sub: `${mostOwned.own.toFixed(1)}% of managers`,
+        }
+      : { k: 'Most owned', v: '—', sub: '' },
+    biggestRiser
+      ? {
+          k: 'Biggest riser',
+          v: biggestRiser.name,
+          sub: `+${Math.round(biggestRiser.transfersInEvent / 1000)}k transfers in this week`,
+        }
+      : { k: 'Biggest riser', v: '—', sub: '' },
+  ]
+
+  const lists: CrowdList[] = [
+    {
+      title: 'Most bought this week',
+      blurb:
+        "Where the field is moving before the deadline, from the current gameweek's transfer counts.",
+      items: byIn
+        .slice(0, 6)
+        .map((p, i) =>
+          crowdRow(p, i, `+${Math.round(p.transfersInEvent / 1000)}k`)
+        ),
+    },
+    {
+      title: 'Most sold this week',
+      blurb:
+        'The exodus. Selling with the crowd is safe; selling before it is where rank is made.',
+      items: byOut
+        .slice(0, 6)
+        .map((p, i) =>
+          crowdRow(p, i, `−${Math.round(p.transfersOutEvent / 1000)}k`)
+        ),
+    },
+  ]
+
+  const differentials: CrowdDifferential[] = allPlayers
+    .filter((p) => squadIds.has(p.id) && p.own < 15)
+    .sort((a, b) => b.xgi - a.xgi)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      team: p.team,
+      own: p.own.toFixed(1),
+      xgi: p.xgi.toFixed(2),
+    }))
+
+  const missing: CrowdMissing[] = byOwn
+    .filter((p) => !squadIds.has(p.id) && p.own > 10)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      team: p.team,
+      price: p.price.toFixed(1),
+      own: p.own.toFixed(1),
+    }))
+
+  return { pulse, lists, differentials, missing }
+}
+
+// ---- Dossier ----
+
+export interface DossierRivalOption {
+  id: number
+  label: string
+  selected: boolean
+}
+
+export interface DossierVersusRow {
+  k: string
+  a: string
+  b: string
+  delta: string
+  fg: string
+}
+
+export interface DossierTableRow {
+  k: string
+  v: string
+  fg: string
+}
+
+export interface DossierView {
+  name: string
+  shortName: string
+  rivalShort: string
+  meta: string
+  newsLine: string
+  statusFg: string
+  summary: string
+  rivalOptions: DossierRivalOption[]
+  versus: DossierVersusRow[]
+  versusVerdict: string
+  table: DossierTableRow[]
+  next: FixtureCell[]
+}
+
+const STATUS_FG: Record<PlayerStatus, string> = {
+  ok: 'var(--fg3)',
+  risk: 'var(--warn)',
+  out: 'var(--neg)',
+}
+
+export function buildDossier(
+  player: Player,
+  rivalId: number | null,
+  squad: Player[]
+): DossierView | null {
+  const pool = squad.filter((p) => p.id !== player.id)
+  const samePos = pool.filter((p) => p.pos === player.pos)
+  const candidates = samePos.length ? samePos : pool
+  if (candidates.length === 0) return null
+
+  const rival =
+    (rivalId != null && candidates.find((p) => p.id === rivalId)) ||
+    [...candidates].sort((a, b) => a.ep - b.ep)[0]
+
+  const rivalOptions: DossierRivalOption[] = candidates.map((p) => ({
+    id: p.id,
+    label: `${p.name} · ${p.pos} · £${p.price.toFixed(1)}m`,
+    selected: p.id === rival.id,
+  }))
+
+  const cmp = (
+    k: string,
+    f: (p: Player) => number,
+    dp: number,
+    lowerBetter = false
+  ): DossierVersusRow => {
+    const a = f(player)
+    const b = f(rival)
+    const diff = a - b
+    const good = lowerBetter ? diff < 0 : diff > 0
+    return {
+      k,
+      a: a.toFixed(dp),
+      b: b.toFixed(dp),
+      delta:
+        (diff > 0 ? '+' : diff < 0 ? '−' : '') + Math.abs(diff).toFixed(dp),
+      fg:
+        Math.abs(diff) < 0.005
+          ? 'var(--fg3)'
+          : good
+            ? 'var(--pos)'
+            : 'var(--neg)',
+    }
+  }
+
+  const versus: DossierVersusRow[] = [
+    cmp('Expected points', (p) => p.ep, 1),
+    cmp('Expected involvement', (p) => p.xgi, 2),
+    cmp('Per ninety', xgiPer90, 2),
+    cmp('Points per game', (p) => p.ppg, 1),
+    cmp('Price', (p) => p.price, 1, true),
+    cmp('Value per million', (p) => (p.price > 0 ? p.ppg / p.price : 0), 2),
+    cmp('Mean difficulty, next five', avgFdr, 1, true),
+    cmp('Chance of playing', (p) => p.chance, 0),
+  ]
+
+  const wins = versus.filter((v) => v.fg === 'var(--pos)').length
+  const rivalSurname = surname(rival.name)
+  const versusVerdict =
+    wins >= 6
+      ? `Clearly ahead of ${rivalSurname} on ${wins} of eight measures. A straight upgrade if the money is there.`
+      : wins >= 4
+        ? `Ahead on ${wins} of eight. Better, but not by enough to spend a transfer on alone.`
+        : `Behind ${rivalSurname} on most measures. No case for the switch this week.`
+
+  const table: DossierTableRow[] = [
+    { k: 'Expected goals', v: player.xg.toFixed(2), fg: 'var(--fg)' },
+    { k: 'Expected assists', v: player.xa.toFixed(2), fg: 'var(--fg)' },
+    { k: 'Minutes', v: String(player.mins), fg: 'var(--fg)' },
+    { k: 'Bonus · BPS', v: `${player.bonus} · ${player.bps}`, fg: 'var(--fg)' },
+    {
+      k: 'Influence, creativity, threat',
+      v: player.ict.map((n) => n.toFixed(0)).join(' · '),
+      fg: 'var(--fg)',
+    },
+    {
+      k: 'Transfers in, out this week',
+      v: `${Math.round(player.transfersInEvent / 1000)}k · ${Math.round(player.transfersOutEvent / 1000)}k`,
+      fg: 'var(--fg)',
+    },
+    {
+      k: 'Price movement this week',
+      v: `${player.priceMove}m`,
+      fg:
+        player.priceDir === 'up'
+          ? 'var(--pos)'
+          : player.priceDir === 'down'
+            ? 'var(--neg)'
+            : 'var(--fg3)',
+    },
+  ]
+
+  return {
+    name: player.name,
+    shortName: surname(player.name),
+    rivalShort: rivalSurname,
+    meta: `${player.team} · ${player.pos} · £${player.price.toFixed(1)}m · ${player.own.toFixed(1)}% owned`,
+    newsLine: player.status === 'ok' ? 'No availability concerns' : player.note,
+    statusFg: STATUS_FG[player.status],
+    summary: `${player.ppg.toFixed(1)} points per game this season, from ${player.mins} minutes played.`,
+    rivalOptions,
+    versus,
+    versusVerdict,
+    table,
+    next: player.next,
+  }
+}
+
+// ---- Matchday leads ----
+
+export interface LeadFigure {
+  k: string
+  v: string
+  fg: string
+}
+
+export interface LeadCard {
+  headline: string
+  standfirst: string
+  body: string
+  figures: LeadFigure[]
+  cta: string
+  ctaPage: PageKey
+  size: string
+  standSize: string
+  ruleW: string
+}
+
+export function buildLeads(
+  headToHead: HeadToHeadCase[],
+  chips: ChipCardView[],
+  posAudit: PositionAuditRow[]
+): LeadCard[] {
+  const leads: LeadCard[] = []
+
+  const bestCase = headToHead[0]
+  const inHead = bestCase?.heads[1]
+  if (bestCase && inHead) {
+    const priceRow = bestCase.measures.find((m) => m.k === 'Price')
+    const xgiRow = bestCase.measures.find(
+      (m) => m.k === 'Expected involvement'
+    )
+    const fdrRow = bestCase.measures.find(
+      (m) => m.k === 'Mean difficulty, next five'
+    )
+    leads.push({
+      headline: `${bestCase.outName} out, ${inHead.name} in.`,
+      standfirst: bestCase.rationale,
+      body: `${inHead.name} outweighs ${bestCase.outName} on expected involvement and the run of fixtures, for ${bestCase.bank} in the bank and ${bestCase.ft}.`,
+      figures: [
+        priceRow && {
+          k: 'Price',
+          v: priceRow.cells[1].v,
+          fg: priceRow.cells[1].fg,
+        },
+        xgiRow && {
+          k: 'xGI',
+          v: xgiRow.cells[1].v,
+          fg: xgiRow.cells[1].fg,
+        },
+        fdrRow && {
+          k: 'Next five FDR',
+          v: fdrRow.cells[1].v,
+          fg: fdrRow.cells[1].fg,
+        },
+        { k: 'Cost', v: bestCase.ft, fg: 'var(--fg)' },
+      ].filter((f): f is LeadFigure => !!f),
+      cta: 'See the full comparison',
+      ctaPage: 'head-to-head',
+      size: '44px',
+      standSize: '16px',
+      ruleW: '120px',
+    })
+  }
+
+  const bestChip = [...chips]
+    .filter((c) => c.status === 'Unused')
+    .sort((a, b) => b.conf - a.conf)[0]
+  if (bestChip) {
+    leads.push({
+      headline: `${bestChip.name}: ${bestChip.window}.`,
+      standfirst: bestChip.reasons[0] ?? '',
+      body: bestChip.reasons.slice(1).join(' '),
+      figures: [
+        {
+          k: 'Confidence',
+          v: `${bestChip.confLabel} · ${bestChip.conf}%`,
+          fg: 'var(--accent)',
+        },
+      ],
+      cta: 'Read the chip column',
+      ctaPage: 'chips',
+      size: '32px',
+      standSize: '15px',
+      ruleW: '80px',
+    })
+  }
+
+  const weakest = [...posAudit].sort((a, b) => a.gapValue - b.gapValue)[0]
+  if (weakest && weakest.gapValue < -1) {
+    leads.push({
+      headline: `${weakest.pos} is where the squad leaks expected points.`,
+      standfirst: weakest.note,
+      body: `The position sits ${weakest.v} behind the best affordable eleven at that spend.`,
+      figures: [{ k: weakest.pos, v: weakest.v, fg: weakest.fg }],
+      cta: 'Open the team sheet',
+      ctaPage: 'team-sheet',
+      size: '32px',
+      standSize: '15px',
+      ruleW: '80px',
+    })
+  }
+
+  return leads
 }

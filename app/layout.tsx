@@ -1,26 +1,42 @@
 import type { Metadata } from 'next'
-import { Bricolage_Grotesque, Geist_Mono, Public_Sans } from 'next/font/google'
+import {
+  Big_Shoulders,
+  Familjen_Grotesk,
+  Newsreader,
+  Spline_Sans_Mono,
+} from 'next/font/google'
 import './globals.css'
 
 import QueryProvider from '@/provider/QueryProvider'
 import { cn } from '@/lib/utils'
 
-const publicSans = Public_Sans({
+const familjenGrotesk = Familjen_Grotesk({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
   variable: '--font-sans',
 })
 
-const bricolageGrotesque = Bricolage_Grotesque({
+// Big Shoulders' `opsz` axis is what gives it the tall, condensed "Display"
+// cut at large sizes (and a text-friendly cut at small ones) — the family
+// no longer ships as a separate Big_Shoulders_Display export.
+const bigShouldersDisplay = Big_Shoulders({
   subsets: ['latin'],
-  weight: ['500', '700', '800'],
+  axes: ['opsz'],
   variable: '--font-heading',
 })
 
-const geistMono = Geist_Mono({
+const splineSansMono = Spline_Sans_Mono({
   variable: '--font-geist-mono',
+  weight: ['400', '500', '600'],
   subsets: ['latin'],
+})
+
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-editorial',
 })
 
 export const metadata: Metadata = {
@@ -35,10 +51,11 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       className={cn(
         'h-full',
         'antialiased',
-        geistMono.variable,
+        splineSansMono.variable,
         'font-sans',
-        publicSans.variable,
-        bricolageGrotesque.variable
+        familjenGrotesk.variable,
+        bigShouldersDisplay.variable,
+        newsreader.variable
       )}
     >
       <body className="flex min-h-full flex-col">
