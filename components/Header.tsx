@@ -1,5 +1,6 @@
 'use client'
 
+import { signOut } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
@@ -44,6 +45,13 @@ export function Header({
         <div className="border-border bg-muted flex size-7 items-center justify-center rounded-full border text-[11px] font-semibold text-(--fg2)">
           {initials}
         </div>
+        <Button
+          variant="ghost"
+          onClick={() => signOut({ redirectTo: '/login' })}
+          className="h-auto rounded-lg px-2.5 py-1.5 text-[11px] text-(--fg2)"
+        >
+          Sign out
+        </Button>
       </div>
     </header>
   )
