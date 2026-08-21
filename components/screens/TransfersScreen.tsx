@@ -42,7 +42,7 @@ export function TransfersScreen({
             {t.cards.map((c) => (
               <div
                 key={c.name}
-                className="overflow-hidden rounded-[11px] border"
+                className="overflow-hidden rounded-[3px] border"
                 style={{ borderColor: c.border, background: c.bg }}
               >
                 <div className="border-border border-b p-3.5">

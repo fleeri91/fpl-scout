@@ -25,7 +25,7 @@ interface Alert {
 
 function StatusDot({ status }: { status: string }) {
   return (
-    <i data-status={status} className="block size-1.75 shrink-0 rounded-full" />
+    <i data-status={status} className="block size-1.75 shrink-0 rounded-[2px]" />
   )
 }
 
@@ -43,7 +43,7 @@ function PlayerCard({
       variant="outline"
       onClick={onOpen}
       className={cn(
-        'border-border h-auto flex-col items-stretch gap-2 rounded-[10px] p-2.5 text-left whitespace-normal',
+        'border-border h-auto flex-col items-stretch gap-2 rounded-[2px] p-2.5 text-left whitespace-normal',
         dim ? 'bg-transparent' : 'bg-(--card2)'
       )}
     >
@@ -114,7 +114,7 @@ export function DashboardScreen({
             <div className="text-[11px] tracking-wider text-(--fg3) uppercase">
               {s.label}
             </div>
-            <div className="mono mt-1 text-[28px] font-semibold tracking-tight">
+            <div className="mono mt-1.75 text-[31px] leading-[1.05] font-extrabold whitespace-nowrap tracking-[-0.04em]">
               {s.value}
             </div>
             <div className="mono text-xs" data-delta={s.dir}>
@@ -128,7 +128,9 @@ export function DashboardScreen({
         <Card className="border-border gap-0 rounded-xl py-0">
           <CardHeader className="border-border flex flex-row items-center justify-between border-b py-4">
             <div>
-              <div className="text-sm font-semibold">Squad health</div>
+              <div className="font-heading text-[17px] font-bold tracking-[-0.025em]">
+                Squad health
+              </div>
               <div className="mt-0.5 text-xs text-(--fg2)">
                 Points trend over recent gameweeks · {squadNote}
               </div>
@@ -180,7 +182,9 @@ export function DashboardScreen({
 
         <Card className="border-border gap-0 rounded-xl py-0">
           <CardHeader className="border-border flex flex-row items-center justify-between border-b py-4">
-            <div className="text-sm font-semibold">This week&apos;s alerts</div>
+            <div className="font-heading text-[17px] font-bold tracking-[-0.025em]">
+              This week&apos;s alerts
+            </div>
             <Badge
               variant="outline"
               className="mono border-border bg-muted rounded-full px-1.75 py-0.5 text-[11px] font-normal text-(--fg2)"
@@ -192,7 +196,7 @@ export function DashboardScreen({
             {alerts.map((a) => (
               <div
                 key={a.id}
-                className="border-border flex items-start gap-2.5 rounded-[10px] border bg-(--card2) p-2.75"
+                className="border-border flex items-start gap-2.5 rounded-[2px] border bg-(--card2) p-2.75"
               >
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-1.75">

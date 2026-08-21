@@ -21,10 +21,10 @@ export function Header({
   return (
     <header className="border-border bg-card sticky top-0 z-20 flex min-h-14.25 items-center justify-between gap-4 border-b px-5.5">
       <div className="flex items-baseline gap-2.5">
-        <h1 className="m-0 text-[15px] font-semibold tracking-tight">
+        <h1 className="m-0 text-xl font-extrabold tracking-[-0.035em]">
           {title}
         </h1>
-        <span className="text-xs text-(--fg3)">{subtitle}</span>
+        <span className="text-xs text-(--fg3) italic">{subtitle}</span>
       </div>
       <div className="flex items-center gap-2.5">
         <span className="text-xs text-(--fg3)">{gameweekLabel}</span>

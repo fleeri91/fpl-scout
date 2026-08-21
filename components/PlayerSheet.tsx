@@ -55,8 +55,8 @@ export function PlayerSheet({
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="border-border w-105 gap-0 overflow-y-auto sm:max-w-105">
         <SheetHeader className="border-border gap-1 border-b p-4.5 pr-10">
-          <SheetTitle className="flex items-center gap-2.25 text-[19px] font-bold tracking-tight">
-            <i data-status={player.status} className="size-2 rounded-full" />
+          <SheetTitle className="flex items-center gap-2.25 text-[25px] font-extrabold tracking-[-0.035em]">
+            <i data-status={player.status} className="size-2 rounded-[2px]" />
             {player.name}
           </SheetTitle>
           <SheetDescription className="mono text-xs text-(--fg3)">
@@ -72,7 +72,7 @@ export function PlayerSheet({
             {bigStats.map((s) => (
               <Card
                 key={s.k}
-                className="border-border gap-1 rounded-[10px] bg-(--card2) p-2.75"
+                className="border-border gap-1 rounded-[2px] bg-(--card2) p-2.75"
               >
                 <div className="text-[10px] tracking-wider text-(--fg3) uppercase">
                   {s.k}
@@ -85,7 +85,7 @@ export function PlayerSheet({
             <div className="mb-2.5 text-xs font-semibold">
               Points per gameweek
             </div>
-            <Card className="border-border rounded-[10px] bg-(--card2) p-3">
+            <Card className="border-border rounded-[2px] bg-(--card2) p-3">
               {isLoading ? (
                 <div className="p-6 text-center text-xs text-(--fg3)">
                   Loading…
@@ -101,7 +101,7 @@ export function PlayerSheet({
           </div>
           <div>
             <div className="mb-2 text-xs font-semibold">Full breakdown</div>
-            <Table className="border-border rounded-[10px] border text-[12.5px]">
+            <Table className="border-border rounded-[2px] border text-[12.5px]">
               <TableBody>
                 {table.map((r) => (
                   <TableRow

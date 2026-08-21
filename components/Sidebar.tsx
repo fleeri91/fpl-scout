@@ -52,7 +52,7 @@ export function Sidebar({
           FS
         </div>
         {navOpen ? (
-          <div className="text-sm font-semibold tracking-tight whitespace-nowrap">
+          <div className="font-heading text-[17px] font-extrabold tracking-[-0.03em] whitespace-nowrap uppercase">
             FPL Scout
           </div>
         ) : null}

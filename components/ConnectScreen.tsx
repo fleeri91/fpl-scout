@@ -41,14 +41,14 @@ export function ConnectScreen({
           <div className="bg-primary text-primary-foreground flex size-7.5 items-center justify-center rounded-lg text-sm font-extrabold">
             FS
           </div>
-          <div className="text-base font-semibold tracking-tight">
+          <div className="font-heading text-xl font-extrabold tracking-[-0.03em] uppercase">
             FPL Scout
           </div>
         </div>
 
         <Card className="ring-border gap-0 rounded-xl py-0">
           <CardHeader className="border-border gap-1 border-b py-4.5">
-            <CardTitle className="text-base font-semibold tracking-tight">
+            <CardTitle className="text-[22px] font-extrabold tracking-[-0.035em]">
               Connect your team
             </CardTitle>
             <CardDescription className="text-[12.5px] leading-relaxed">

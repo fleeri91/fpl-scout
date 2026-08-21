@@ -170,21 +170,24 @@ export function computeFixturePlanner(
   bootstrap: Bootstrap,
   fixtures: Fixture[],
   fromEventId: number,
-  count = 6
-): { gws: string[]; matrix: FixturePlannerRow[]; bestWindows: BestWindow[] } {
-  const byTeamId = buildFixturesByTeamId(
-    bootstrap,
-    fixtures,
-    fromEventId,
-    count
-  )
-  const gws = Array.from({ length: count }, (_, i) => `GW${fromEventId + i}`)
+  horizon = 6,
+  windowLen = 3
+): {
+  gws: string[]
+  matrix: FixturePlannerRow[]
+  bestWindows: BestWindow[]
+  windowLen: number
+} {
+  const H = horizon
+  const W = Math.max(2, Math.min(windowLen, H))
+  const byTeamId = buildFixturesByTeamId(bootstrap, fixtures, fromEventId, H)
+  const gws = Array.from({ length: H }, (_, i) => `GW${fromEventId + i}`)
 
   const windows = bootstrap.teams.map((team) => {
     const cells = byTeamId[team.id] ?? []
     let best = { i: 0, avg: 9 }
-    for (let i = 0; i <= Math.max(0, cells.length - 3); i++) {
-      const avg = (cells[i].d + cells[i + 1].d + cells[i + 2].d) / 3
+    for (let i = 0; i <= Math.max(0, cells.length - W); i++) {
+      const avg = cells.slice(i, i + W).reduce((s, c) => s + c.d, 0) / W
       if (avg < best.avg) best = { i, avg }
     }
     const overall = cells.length
@@ -210,7 +213,7 @@ export function computeFixturePlanner(
     cells: w.cells.map((c, i) => ({
       ...c,
       ring:
-        topFour.includes(w.team) && i >= w.start && i < w.start + 3
+        topFour.includes(w.team) && i >= w.start && i < w.start + W
           ? '2px solid var(--accent)'
           : 'none',
     })),
@@ -221,17 +224,17 @@ export function computeFixturePlanner(
     .map((w) => ({
       team: w.team,
       avg: w.avg.toFixed(1),
-      range: `${gws[w.start] ?? gws[0]} – ${gws[Math.min(w.start + 2, gws.length - 1)]}`,
+      range: `${gws[w.start] ?? gws[0]} – ${gws[Math.min(w.start + W - 1, gws.length - 1)]}`,
       note:
-        'Three straight fixtures rated ' +
+        `${W} straight fixtures rated ` +
         w.cells
-          .slice(w.start, w.start + 3)
+          .slice(w.start, w.start + W)
           .map((c) => c.d)
           .join(', ') +
         '. Worth targeting assets here.',
     }))
 
-  return { gws, matrix, bestWindows }
+  return { gws, matrix, bestWindows, windowLen: W }
 }
 
 // ---- Alerts ----
@@ -295,6 +298,10 @@ export interface ChipCardView {
   badgeBg: string
   badgeBorder: string
   badgeFg: string
+  window: string
+  reasons: string[]
+  conf: number
+  confLabel: string
 }
 
 const CHIP_LABELS: Record<ChipName, string> = {
@@ -304,13 +311,263 @@ const CHIP_LABELS: Record<ChipName, string> = {
   '3xc': 'Triple Captain',
 }
 
+const CHIP_HORIZON = 8
+
+interface EventImpact {
+  event: number
+  badCount: number
+  blankCount: number
+  doubleCount: number
+  totalDifficulty: number
+  fixtureSlots: number
+}
+
+function computeSquadEventImpact(
+  fixtures: Fixture[],
+  squadTeamIds: number[],
+  fromEventId: number,
+  horizon: number
+): EventImpact[] {
+  const events = Array.from({ length: horizon }, (_, i) => fromEventId + i)
+  return events.map((event) => {
+    let badCount = 0
+    let blankCount = 0
+    let doubleCount = 0
+    let totalDifficulty = 0
+    let fixtureSlots = 0
+    for (const teamId of squadTeamIds) {
+      const teamFixtures = fixtures.filter(
+        (f) => f.event === event && (f.team_h === teamId || f.team_a === teamId)
+      )
+      if (teamFixtures.length === 0) blankCount++
+      if (teamFixtures.length >= 2) doubleCount++
+      for (const f of teamFixtures) {
+        const d = f.team_h === teamId ? f.team_h_difficulty : f.team_a_difficulty
+        if (d >= 4) badCount++
+        totalDifficulty += d
+        fixtureSlots++
+      }
+    }
+    return { event, badCount, blankCount, doubleCount, totalDifficulty, fixtureSlots }
+  })
+}
+
+function confBucket(score: number): { conf: number; confLabel: string } {
+  if (score >= 70) return { conf: score, confLabel: 'High' }
+  if (score >= 45) return { conf: score, confLabel: 'Medium' }
+  return { conf: score, confLabel: 'Low' }
+}
+
+function recommendWildcard(
+  impacts: EventImpact[],
+  fromEventId: number,
+  horizon: number
+): { window: string; reasons: string[]; conf: number; confLabel: string } {
+  const totalSlots = impacts.reduce((s, i) => s + i.fixtureSlots, 0)
+  const totalDiff = impacts.reduce((s, i) => s + i.totalDifficulty, 0)
+  const baselineAvg = totalSlots ? totalDiff / totalSlots : 3
+
+  const W = 3
+  let best = { start: 0, avgD: 0, badSum: 0 }
+  for (let i = 0; i <= impacts.length - W; i++) {
+    const slice = impacts.slice(i, i + W)
+    const slots = slice.reduce((s, x) => s + x.fixtureSlots, 0)
+    const diff = slice.reduce((s, x) => s + x.totalDifficulty, 0)
+    const badSum = slice.reduce((s, x) => s + x.badCount, 0)
+    const avgD = slots ? diff / slots : 0
+    if (avgD > best.avgD) best = { start: i, avgD, badSum }
+  }
+
+  const startEvent = impacts[best.start]?.event ?? fromEventId
+  const endEvent =
+    impacts[Math.min(best.start + W - 1, impacts.length - 1)]?.event ??
+    fromEventId
+  const delta = best.avgD - baselineAvg
+  const score = Math.round(Math.max(30, Math.min(88, 45 + delta * 60)))
+
+  return {
+    window: `GW${startEvent} – GW${endEvent}`,
+    reasons: [
+      `${best.badSum} squad fixture${best.badSum === 1 ? '' : 's'} rated 4 or 5 across GW${startEvent}–GW${endEvent}.`,
+      `Squad average difficulty in that window is ${best.avgD.toFixed(1)}, versus ${baselineAvg.toFixed(1)} across the full GW${fromEventId}–GW${fromEventId + horizon - 1} outlook.`,
+    ],
+    ...confBucket(score),
+  }
+}
+
+function recommendFreeHit(
+  impacts: EventImpact[],
+  fromEventId: number,
+  horizon: number,
+  squadSize: number
+): { window: string; reasons: string[]; conf: number; confLabel: string } {
+  const peak = impacts.reduce(
+    (b, x) => (x.blankCount > b.blankCount ? x : b),
+    impacts[0]
+  )
+  if (peak && peak.blankCount >= 3) {
+    const score = Math.round(Math.max(35, Math.min(85, peak.blankCount * 12)))
+    return {
+      window: `GW${peak.event} (blank)`,
+      reasons: [
+        `${peak.blankCount} of your ${squadSize} squad players have no fixture in GW${peak.event}.`,
+        `That leaves only ${squadSize - peak.blankCount} starters with a game that week.`,
+      ],
+      ...confBucket(score),
+    }
+  }
+  return {
+    window: `No blank in GW${fromEventId}–GW${fromEventId + horizon - 1}`,
+    reasons: [
+      `Fixture list is clean through GW${fromEventId + horizon - 1} — hold until a blank gameweek is confirmed.`,
+    ],
+    ...confBucket(20),
+  }
+}
+
+function recommendBenchBoost(
+  impacts: EventImpact[],
+  fromEventId: number,
+  horizon: number,
+  squadSize: number
+): { window: string; reasons: string[]; conf: number; confLabel: string } {
+  const peak = impacts.reduce(
+    (b, x) => (x.doubleCount > b.doubleCount ? x : b),
+    impacts[0]
+  )
+  if (peak && peak.doubleCount >= 2) {
+    const score = Math.round(Math.max(35, Math.min(85, peak.doubleCount * 15)))
+    return {
+      window: `GW${peak.event} (double)`,
+      reasons: [
+        `${peak.doubleCount} of your ${squadSize} squad players play twice in GW${peak.event}.`,
+        `Doubling those minutes is worth more from the bench when the whole squad plays.`,
+      ],
+      ...confBucket(score),
+    }
+  }
+  return {
+    window: `No double in GW${fromEventId}–GW${fromEventId + horizon - 1}`,
+    reasons: [
+      `No confirmed double gameweek for your squad through GW${fromEventId + horizon - 1} — hold for now.`,
+    ],
+    ...confBucket(20),
+  }
+}
+
+function recommendTripleCaptain(
+  fixtures: Fixture[],
+  squadElements: FplElement[],
+  fromEventId: number,
+  horizon: number
+): { window: string; reasons: string[]; conf: number; confLabel: string } {
+  const topPlayer = [...squadElements].sort(
+    (a, b) => num(b.expected_goal_involvements) - num(a.expected_goal_involvements)
+  )[0]
+
+  if (!topPlayer) {
+    return {
+      window: `GW${fromEventId}–GW${fromEventId + horizon - 1}`,
+      reasons: ['Not enough squad data yet to pick a captain target.'],
+      ...confBucket(20),
+    }
+  }
+
+  let best: { event: number; avgD: number; isDouble: boolean } | null = null
+  for (let i = 0; i < horizon; i++) {
+    const event = fromEventId + i
+    const teamFixtures = fixtures.filter(
+      (f) =>
+        f.event === event &&
+        (f.team_h === topPlayer.team || f.team_a === topPlayer.team)
+    )
+    if (!teamFixtures.length) continue
+    const avgD =
+      teamFixtures.reduce(
+        (s, f) =>
+          s + (f.team_h === topPlayer.team ? f.team_h_difficulty : f.team_a_difficulty),
+        0
+      ) / teamFixtures.length
+    const isDouble = teamFixtures.length >= 2
+    const score = (isDouble ? -10 : 0) + avgD
+    if (!best || score < (best.isDouble ? -10 : 0) + best.avgD) {
+      best = { event, avgD, isDouble }
+    }
+  }
+
+  if (!best) {
+    return {
+      window: `GW${fromEventId}–GW${fromEventId + horizon - 1}`,
+      reasons: [`${topPlayer.web_name} has no confirmed fixture in this window yet.`],
+      ...confBucket(20),
+    }
+  }
+
+  const score = best.isDouble
+    ? 80
+    : best.avgD <= 2
+      ? 65
+      : best.avgD <= 3
+        ? 45
+        : 30
+
+  return {
+    window: `GW${best.event}${best.isDouble ? ' (double)' : ''}`,
+    reasons: [
+      `${topPlayer.web_name} has ${best.isDouble ? 'a double gameweek' : `a difficulty-${Math.round(best.avgD)} fixture`} in GW${best.event}.`,
+      `Leads your squad in expected goal involvement this season (${num(topPlayer.expected_goal_involvements).toFixed(1)}).`,
+    ],
+    ...confBucket(score),
+  }
+}
+
 export function buildChipStatus(
-  history: EntryHistory | undefined
+  history: EntryHistory | undefined,
+  squadElements: FplElement[],
+  fixtures: Fixture[] | undefined,
+  fromEventId: number | undefined
 ): ChipCardView[] {
   const used = history?.chips ?? []
+  const squadTeamIds = squadElements.map((el) => el.team)
+  const squadSize = squadElements.length
+  const horizon = CHIP_HORIZON
+
+  const impacts =
+    fixtures && fromEventId
+      ? computeSquadEventImpact(fixtures, squadTeamIds, fromEventId, horizon)
+      : []
+
   return (Object.keys(CHIP_LABELS) as ChipName[]).map((key) => {
     const plays = used.filter((c) => c.name === key)
+    const maxUses = key === 'wildcard' ? 2 : 1
     const unused = plays.length === 0
+    const fullyUsed = plays.length >= maxUses
+
+    let rec: { window: string; reasons: string[]; conf: number; confLabel: string }
+    if (fullyUsed) {
+      rec = {
+        window: 'Already used this season',
+        reasons: [],
+        conf: 0,
+        confLabel: '—',
+      }
+    } else if (!fixtures || !fromEventId || squadSize === 0) {
+      rec = {
+        window: 'Connect a squad to see a recommendation',
+        reasons: [],
+        conf: 0,
+        confLabel: '—',
+      }
+    } else if (key === 'wildcard') {
+      rec = recommendWildcard(impacts, fromEventId, horizon)
+    } else if (key === 'freehit') {
+      rec = recommendFreeHit(impacts, fromEventId, horizon, squadSize)
+    } else if (key === 'bboost') {
+      rec = recommendBenchBoost(impacts, fromEventId, horizon, squadSize)
+    } else {
+      rec = recommendTripleCaptain(fixtures, squadElements, fromEventId, horizon)
+    }
+
     return {
       name: CHIP_LABELS[key],
       availability:
@@ -321,6 +578,7 @@ export function buildChipStatus(
       badgeBg: unused ? 'var(--muted)' : 'transparent',
       badgeBorder: 'var(--border)',
       badgeFg: unused ? 'var(--fg2)' : 'var(--fg3)',
+      ...rec,
     }
   })
 }

@@ -230,7 +230,7 @@ export function ExplorerScreen({
                   <div className="flex items-center gap-2.25">
                     <i
                       data-status={p.status}
-                      className="block size-1.5 shrink-0 rounded-full"
+                      className="block size-1.5 shrink-0 rounded-[2px]"
                     />
                     <span className="font-semibold tracking-tight">
                       {p.name}

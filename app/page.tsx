@@ -83,6 +83,8 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])
   const [now, setNow] = useState(() => Date.now())
+  const [horizon, setHorizon] = useState(6)
+  const [windowLen, setWindowLen] = useState(3)
   const recentTeamIds = useRecentTeamIds()
 
   const [filters, setFilters] = useState<ExplorerFilters>({
@@ -200,16 +202,44 @@ export default function Home() {
     [bootstrapQuery.data]
   )
 
+  // The FPL season runs 38 gameweeks, so the horizon slider can't reach
+  // further than that from the current gameweek.
+  const horizonMax = currentEvent ? Math.max(3, 39 - currentEvent.id) : 39
+  const windowMax = Math.max(2, Math.min(6, horizon))
+  const effectiveWindowLen = Math.max(2, Math.min(windowLen, windowMax))
+  const windowLenLabel = `${effectiveWindowLen} GWs`
+  const horizonLabel = currentEvent
+    ? `GW${currentEvent.id} – GW${currentEvent.id + horizon - 1} · ${horizon} weeks`
+    : ''
+  const windowNote = currentEvent
+    ? `Lowest average difficulty across any ${effectiveWindowLen} consecutive gameweeks in the GW${currentEvent.id}–GW${currentEvent.id + horizon - 1} range.`
+    : ''
+  const cellW = horizon <= 6 ? 'auto' : horizon <= 24 ? '64px' : '72px'
+  const cellFont = '11px'
+
   const fixturePlanner = useMemo(() => {
     if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent)
-      return { gws: [], matrix: [], bestWindows: [] }
+      return {
+        gws: [],
+        matrix: [],
+        bestWindows: [],
+        windowLen: effectiveWindowLen,
+      }
     return computeFixturePlanner(
       bootstrapQuery.data,
       fixturesQuery.data,
       currentEvent.id,
-      6
+      horizon,
+      windowLen
     )
-  }, [bootstrapQuery.data, fixturesQuery.data, currentEvent])
+  }, [
+    bootstrapQuery.data,
+    fixturesQuery.data,
+    currentEvent,
+    horizon,
+    windowLen,
+    effectiveWindowLen,
+  ])
 
   const xi = useMemo(() => {
     const picks = entryEventQuery.data?.picks ?? []
@@ -229,18 +259,27 @@ export default function Home() {
       .filter((p): p is Player => !!p)
   }, [entryEventQuery.data, playersById])
 
-  const alerts = useMemo(() => {
+  const squadElements = useMemo(() => {
     if (!bootstrapQuery.data || !entryEventQuery.data) return []
     const squadIds = new Set(entryEventQuery.data.picks.map((p) => p.element))
-    const squadElements = (bootstrapQuery.data.elements as FplElement[]).filter(
-      (el) => squadIds.has(el.id)
+    return (bootstrapQuery.data.elements as FplElement[]).filter((el) =>
+      squadIds.has(el.id)
     )
+  }, [bootstrapQuery.data, entryEventQuery.data])
+
+  const alerts = useMemo(() => {
     return buildAlerts(squadElements).filter((a) => !dismissed.includes(a.id))
-  }, [bootstrapQuery.data, entryEventQuery.data, dismissed])
+  }, [squadElements, dismissed])
 
   const chips = useMemo(
-    () => buildChipStatus(entryHistoryQuery.data),
-    [entryHistoryQuery.data]
+    () =>
+      buildChipStatus(
+        entryHistoryQuery.data,
+        squadElements,
+        fixturesQuery.data,
+        currentEvent?.id
+      ),
+    [entryHistoryQuery.data, squadElements, fixturesQuery.data, currentEvent]
   )
 
   const bankM = (entryEventQuery.data?.entry_history.bank ?? 0) / 10
@@ -528,6 +567,17 @@ export default function Home() {
               gws={fixturePlanner.gws}
               matrix={fixturePlanner.matrix}
               bestWindows={fixturePlanner.bestWindows}
+              windowLen={effectiveWindowLen}
+              windowMax={windowMax}
+              windowLenLabel={windowLenLabel}
+              onWindowLenChange={setWindowLen}
+              horizon={horizon}
+              horizonMax={horizonMax}
+              horizonLabel={horizonLabel}
+              onHorizonChange={setHorizon}
+              windowNote={windowNote}
+              cellW={cellW}
+              cellFont={cellFont}
             />
           )}
           {screen === 'chips' && <ChipsScreen chips={chips} />}
