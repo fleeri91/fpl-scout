@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
 import {
@@ -78,14 +79,20 @@ export function FixturesScreen({
               {d}
             </span>
           ))}
-          <span className="ml-2.5 text-(--fg2)">
-            <span className="border-current px-0.75 py-px rounded-[4px] border text-[9px] font-medium opacity-70">
+          <span className="ml-2.5 inline-flex items-center gap-1 text-(--fg2)">
+            <Badge
+              variant="outline"
+              className="h-auto w-auto min-w-0 gap-0 rounded-[4px] border-current px-0.75 py-px text-[9px] font-medium text-current opacity-70"
+            >
               H
-            </span>{' '}
-            home ·{' '}
-            <span className="border-current px-0.75 py-px rounded-[4px] border text-[9px] font-medium opacity-70">
+            </Badge>
+            home ·
+            <Badge
+              variant="outline"
+              className="h-auto w-auto min-w-0 gap-0 rounded-[4px] border-current px-0.75 py-px text-[9px] font-medium text-current opacity-70"
+            >
               A
-            </span>{' '}
+            </Badge>
             away
           </span>
         </div>
@@ -118,9 +125,7 @@ export function FixturesScreen({
               <span className="text-[10px] tracking-wider text-(--fg3) uppercase">
                 Horizon
               </span>
-              <span className="mono text-xs text-(--fg2)">
-                {horizonLabel}
-              </span>
+              <span className="mono text-xs text-(--fg2)">{horizonLabel}</span>
             </div>
             <Slider
               min={3}
@@ -194,18 +199,7 @@ export function FixturesScreen({
                         }}
                       >
                         <span>{c.opp}</span>
-                        <span
-                          className={cn(
-                            'border-current inline-flex shrink-0 items-center justify-center rounded-[4px] border font-medium tracking-[0.02em] opacity-55'
-                          )}
-                          style={{
-                            width: '1.15em',
-                            height: '1.15em',
-                            fontSize: '0.55em',
-                          }}
-                        >
-                          {home ? 'H' : 'A'}
-                        </span>
+                        <span>{home ? '(H)' : '(A)'}</span>
                       </div>
                     </TableCell>
                   )
