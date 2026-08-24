@@ -3,17 +3,18 @@ import type {
   ChipName,
   ElementTypes,
   Element as FplRawElement,
+  EntryEventHistory,
   EntryHistory,
   Event as FplEvent,
   Fixture,
   Team,
 } from 'fpl-api'
 import type {
-  Delta,
   FixtureCell,
   PlayerStatus,
   Player,
   Position,
+  SetPieceMark,
 } from './types'
 
 // `getTeamShortName`/`getElementTypeLabel` are called per-fixture and
@@ -84,6 +85,31 @@ export function getCurrentEvent(bootstrap: Bootstrap): FplEvent | undefined {
   )
 }
 
+// FPL banks unused free transfers up to this cap (the 2024/25+ rule — this
+// doesn't reconstruct older seasons' lower cap).
+const FREE_TRANSFER_CAP = 5
+
+// Free transfers aren't exposed directly by the API — reconstruct the bank
+// by walking event history from GW2 (GW1 is unlimited, so it doesn't
+// consume or grant a banked transfer). Taking a hit (more transfers than
+// were banked) resets the bank to 1 for the following gameweek.
+export function computeFreeTransfers(
+  history: EntryEventHistory[],
+  uptoEventId: number
+): number {
+  const byEvent = new Map(history.map((h) => [h.event, h]))
+  let ft = 1
+  for (let event = 2; event <= uptoEventId; event++) {
+    const h = byEvent.get(event)
+    if (!h) continue
+    ft =
+      h.event_transfers > ft
+        ? 1
+        : Math.min(FREE_TRANSFER_CAP, ft - h.event_transfers + 1)
+  }
+  return ft
+}
+
 export function buildFixturesByTeamId(
   bootstrap: Bootstrap,
   fixtures: Fixture[],
@@ -122,6 +148,21 @@ function defaultNote(element: FplElement): string {
   return `${num(element.points_per_game).toFixed(1)} pts/game · ${element.minutes} mins this season.`
 }
 
+function buildSetPieces(element: FplElement): SetPieceMark[] {
+  const marks: SetPieceMark[] = []
+  if (element.penalties_order === 1) {
+    marks.push({ mark: 'P', title: 'First-choice penalty taker' })
+  } else if (element.penalties_order === 2) {
+    marks.push({ mark: 'P', title: 'Second-choice penalty taker' })
+  }
+  if (element.corners_and_indirect_freekicks_order === 1) {
+    marks.push({ mark: 'C', title: 'Takes corners and indirect free kicks' })
+  } else if (element.corners_and_indirect_freekicks_order === 2) {
+    marks.push({ mark: 'C', title: 'Second-choice for corners' })
+  }
+  return marks
+}
+
 export function mapElementToPlayer(
   element: FplElement,
   bootstrap: Bootstrap,
@@ -148,6 +189,18 @@ export function mapElementToPlayer(
     priceDir: moveN > 0.05 ? 'up' : moveN < -0.05 ? 'down' : ('flat' as const),
     next: fixturesByTeamId[element.team]?.slice(0, 5) ?? [],
     next3: fixturesByTeamId[element.team]?.slice(0, 3) ?? [],
+    ep: num(element.ep_next),
+    ppg: num(element.points_per_game),
+    bonus: element.bonus,
+    bps: element.bps,
+    ict: [num(element.influence), num(element.creativity), num(element.threat)],
+    chance:
+      element.chance_of_playing_next_round == null
+        ? 100
+        : element.chance_of_playing_next_round,
+    setPieces: buildSetPieces(element),
+    transfersInEvent: element.transfers_in_event,
+    transfersOutEvent: element.transfers_out_event,
   }
 }
 
@@ -237,58 +290,6 @@ export function computeFixturePlanner(
   return { gws, matrix, bestWindows, windowLen: W }
 }
 
-// ---- Alerts ----
-
-export interface AlertItem {
-  id: string
-  kind: string
-  tone: Delta
-  title: string
-  body: string
-}
-
-export function buildAlerts(squad: FplElement[]): AlertItem[] {
-  const alerts: AlertItem[] = []
-  for (const el of squad) {
-    const moveN = el.cost_change_event / 10
-    if (moveN > 0.05) {
-      alerts.push({
-        id: `price-up-${el.id}`,
-        kind: 'Price rise',
-        tone: 'up',
-        title: `${el.web_name} +${moveN.toFixed(1)} today`,
-        body: `Risen ${moveN.toFixed(1)}m today. Season change: ${(el.cost_change_start / 10).toFixed(1)}m.`,
-      })
-    } else if (moveN < -0.05) {
-      alerts.push({
-        id: `price-down-${el.id}`,
-        kind: 'Price fall',
-        tone: 'down',
-        title: `${el.web_name} ${moveN.toFixed(1)} today`,
-        body: `Fallen ${Math.abs(moveN).toFixed(1)}m today. Season change: ${(el.cost_change_start / 10).toFixed(1)}m.`,
-      })
-    }
-    if (el.status !== 'a') {
-      const label =
-        el.status === 'd'
-          ? 'Doubtful'
-          : el.status === 'i'
-            ? 'Injury'
-            : el.status === 's'
-              ? 'Suspended'
-              : 'Unavailable'
-      alerts.push({
-        id: `status-${el.id}`,
-        kind: label,
-        tone: 'down',
-        title: `${el.web_name}: ${label.toLowerCase()}`,
-        body: el.news?.trim() || 'No further details from the club.',
-      })
-    }
-  }
-  return alerts
-}
-
 // ---- Chip strategy ----
 
 export interface ChipCardView {
@@ -352,7 +353,7 @@ function computeSquadEventImpact(
   })
 }
 
-function confBucket(score: number): { conf: number; confLabel: string } {
+export function confBucket(score: number): { conf: number; confLabel: string } {
   if (score >= 70) return { conf: score, confLabel: 'High' }
   if (score >= 45) return { conf: score, confLabel: 'Medium' }
   return { conf: score, confLabel: 'Low' }
@@ -583,38 +584,6 @@ export function buildChipStatus(
   })
 }
 
-// ---- Transfer suggestions ----
-
-export interface TransferStatRow {
-  k: string
-  v: string
-  dir: Delta
-}
-
-export interface TransferCardView {
-  name: string
-  team: string
-  pos: string
-  price: string
-  tag: string
-  tagFg: string
-  border: string
-  bg: string
-  cta: string
-  ctaBg: string
-  ctaBorder: string
-  ctaFg: string
-  stats: TransferStatRow[]
-  next: FixtureCell[]
-}
-
-export interface TransferSectionView {
-  outName: string
-  bank: string
-  rationale: string
-  cards: TransferCardView[]
-}
-
 function xgiPer90(p: Player): number {
   return p.mins > 0 ? p.xgi / (p.mins / 90) : 0
 }
@@ -623,110 +592,225 @@ function avgFdr(p: Player): number {
   return p.next.length ? p.next.reduce((s, f) => s + f.d, 0) / p.next.length : 0
 }
 
-export function buildTransferSuggestions(
-  squadStarters: Player[],
-  allPlayers: Player[],
-  squadIds: Set<number>,
-  bankM: number
-): TransferSectionView[] {
-  const ranked = [...squadStarters].sort(
-    (a, b) => a.xgi / Math.max(a.price, 0.1) - b.xgi / Math.max(b.price, 0.1)
-  )
-  const worst = ranked.slice(0, 2)
-
-  return worst.map((o) => {
-    const budget = o.price + bankM
-    const alternatives = allPlayers
-      .filter(
-        (p) =>
-          p.pos === o.pos &&
-          !squadIds.has(p.id) &&
-          p.price <= budget &&
-          p.status === 'ok'
-      )
-      .sort((a, b) => b.xgi - a.xgi)
-      .slice(0, 3)
-
-    const base: TransferCardView = {
-      name: o.name,
-      team: o.team,
-      pos: o.pos,
-      price: o.price.toFixed(1),
-      tag: 'Current',
-      tagFg: 'var(--fg3)',
-      border: 'var(--border)',
-      bg: 'var(--card2)',
-      cta: 'Keep',
-      ctaBg: 'transparent',
-      ctaBorder: 'var(--border)',
-      ctaFg: 'var(--fg2)',
-      stats: [
-        { k: 'xGI / 90', v: xgiPer90(o).toFixed(2), dir: 'flat' },
-        { k: 'xG', v: o.xg.toFixed(2), dir: 'flat' },
-        { k: 'xA', v: o.xa.toFixed(2), dir: 'flat' },
-        { k: 'Form', v: o.form.toFixed(1), dir: 'flat' },
-        { k: 'Minutes', v: String(o.mins), dir: 'flat' },
-        { k: 'Next 5 avg FDR', v: avgFdr(o).toFixed(1), dir: 'flat' },
-      ],
-      next: o.next,
-    }
-
-    const oFdr = avgFdr(o)
-    const opts: TransferCardView[] = alternatives.map((p, idx) => {
-      const dP = +(p.price - o.price).toFixed(1)
-      const dX = +(p.xgi - o.xgi).toFixed(2)
-      const fdr = avgFdr(p)
-      const rec = idx === 0
-      return {
-        name: p.name,
-        team: p.team,
-        pos: p.pos,
-        price: p.price.toFixed(1),
-        tag: rec ? 'Recommended' : 'Alternative',
-        tagFg: rec ? 'var(--accent)' : 'var(--fg3)',
-        border: rec ? 'var(--accent)' : 'var(--border)',
-        bg: 'var(--card)',
-        cta: rec ? 'Make transfer' : 'Compare',
-        ctaBg: rec ? 'var(--accent)' : 'transparent',
-        ctaBorder: rec ? 'var(--accent)' : 'var(--border)',
-        ctaFg: rec ? 'var(--accent-fg)' : 'var(--fg2)',
-        stats: [
-          {
-            k: 'xGI / 90',
-            v: xgiPer90(p).toFixed(2),
-            dir: dX > 0 ? 'up' : 'down',
-          },
-          {
-            k: 'Price delta',
-            v: (dP > 0 ? '+' : '') + dP.toFixed(1) + 'm',
-            dir: dP < 0 ? 'up' : 'flat',
-          },
-          {
-            k: 'xGI delta',
-            v: (dX > 0 ? '+' : '') + dX.toFixed(2),
-            dir: dX > 0 ? 'up' : 'down',
-          },
-          {
-            k: 'Form',
-            v: p.form.toFixed(1),
-            dir: p.form > o.form ? 'up' : 'down',
-          },
-          { k: 'Ownership', v: p.own.toFixed(1) + '%', dir: 'flat' },
-          {
-            k: 'Next 5 avg FDR',
-            v: fdr.toFixed(1),
-            dir: fdr < oFdr ? 'up' : 'down',
-          },
-        ],
-        next: p.next,
-      }
-    })
-
-    return {
-      outName: o.name,
-      bank: `£${bankM.toFixed(1)}m`,
-      rationale: `Lowest xGI per £m among your starting XI at ${o.pos}.`,
-      cards: [base, ...opts],
-    }
-  })
+function surname(name: string): string {
+  const parts = name.trim().split(' ')
+  return parts[parts.length - 1]
 }
+
+// ---- Team sheet: totals ----
+
+export interface TeamTotalRow {
+  k: string
+  v: string
+  fg: string
+}
+
+export function buildTeamTotals(
+  xi: Player[],
+  squad: Player[],
+  bankM: number,
+  valueM: number
+): TeamTotalRow[] {
+  const xiEp = xi.reduce((a, p) => a + p.ep, 0)
+  const flagged = squad.filter((p) => p.status !== 'ok').length
+  return [
+    { k: 'Squad value', v: `£${valueM.toFixed(1)}m`, fg: 'var(--fg)' },
+    { k: 'In the bank', v: `£${bankM.toFixed(1)}m`, fg: 'var(--fg)' },
+    { k: 'XI expected points', v: xiEp.toFixed(1), fg: 'var(--accent)' },
+    { k: 'Flagged', v: String(flagged), fg: 'var(--warn)' },
+  ]
+}
+
+// ---- Transfers ----
+
+export interface ForcedDecision {
+  id: number
+  name: string
+  chance: string
+  note: string
+  where: string
+  dot: string
+}
+
+// A flagged squad player forces a decision whether or not a good
+// replacement exists — surfaced separately from the transfer calls below.
+export function buildForcedDecisions(
+  xi: Player[],
+  bench: Player[]
+): ForcedDecision[] {
+  const dot = (p: Player) => (p.status === 'risk' ? 'var(--warn)' : 'var(--neg)')
+  return [
+    ...xi
+      .filter((p) => p.status !== 'ok')
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        chance: `${p.chance}%`,
+        note: p.note,
+        where: 'Starting XI',
+        dot: dot(p),
+      })),
+    ...bench
+      .filter((p) => p.status !== 'ok')
+      .map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        chance: `${p.chance}%`,
+        note: p.note,
+        where: `Bench ${i + 1}`,
+        dot: dot(p),
+      })),
+  ]
+}
+
+// ---- Dossier ----
+
+export interface DossierRivalOption {
+  id: number
+  label: string
+  selected: boolean
+}
+
+export interface DossierVersusRow {
+  k: string
+  a: string
+  b: string
+  delta: string
+  fg: string
+}
+
+export interface DossierTableRow {
+  k: string
+  v: string
+  fg: string
+}
+
+export interface DossierView {
+  name: string
+  shortName: string
+  rivalShort: string
+  meta: string
+  newsLine: string
+  statusFg: string
+  summary: string
+  rivalOptions: DossierRivalOption[]
+  versus: DossierVersusRow[]
+  versusVerdict: string
+  table: DossierTableRow[]
+  next: FixtureCell[]
+}
+
+const STATUS_FG: Record<PlayerStatus, string> = {
+  ok: 'var(--fg3)',
+  risk: 'var(--warn)',
+  out: 'var(--neg)',
+}
+
+export function buildDossier(
+  player: Player,
+  rivalId: number | null,
+  squad: Player[]
+): DossierView | null {
+  const pool = squad.filter((p) => p.id !== player.id)
+  const samePos = pool.filter((p) => p.pos === player.pos)
+  const candidates = samePos.length ? samePos : pool
+  if (candidates.length === 0) return null
+
+  const rival =
+    (rivalId != null && candidates.find((p) => p.id === rivalId)) ||
+    [...candidates].sort((a, b) => a.ep - b.ep)[0]
+
+  const rivalOptions: DossierRivalOption[] = candidates.map((p) => ({
+    id: p.id,
+    label: `${p.name} · ${p.pos} · £${p.price.toFixed(1)}m`,
+    selected: p.id === rival.id,
+  }))
+
+  const cmp = (
+    k: string,
+    f: (p: Player) => number,
+    dp: number,
+    lowerBetter = false
+  ): DossierVersusRow => {
+    const a = f(player)
+    const b = f(rival)
+    const diff = a - b
+    const good = lowerBetter ? diff < 0 : diff > 0
+    return {
+      k,
+      a: a.toFixed(dp),
+      b: b.toFixed(dp),
+      delta:
+        (diff > 0 ? '+' : diff < 0 ? '−' : '') + Math.abs(diff).toFixed(dp),
+      fg:
+        Math.abs(diff) < 0.005
+          ? 'var(--fg3)'
+          : good
+            ? 'var(--pos)'
+            : 'var(--neg)',
+    }
+  }
+
+  const versus: DossierVersusRow[] = [
+    cmp('Expected points', (p) => p.ep, 1),
+    cmp('Expected involvement', (p) => p.xgi, 2),
+    cmp('Per ninety', xgiPer90, 2),
+    cmp('Points per game', (p) => p.ppg, 1),
+    cmp('Price', (p) => p.price, 1, true),
+    cmp('Value per million', (p) => (p.price > 0 ? p.ppg / p.price : 0), 2),
+    cmp('Mean difficulty, next five', avgFdr, 1, true),
+    cmp('Chance of playing', (p) => p.chance, 0),
+  ]
+
+  const wins = versus.filter((v) => v.fg === 'var(--pos)').length
+  const rivalSurname = surname(rival.name)
+  const versusVerdict =
+    wins >= 6
+      ? `Clearly ahead of ${rivalSurname} on ${wins} of eight measures. A straight upgrade if the money is there.`
+      : wins >= 4
+        ? `Ahead on ${wins} of eight. Better, but not by enough to spend a transfer on alone.`
+        : `Behind ${rivalSurname} on most measures. No case for the switch this week.`
+
+  const table: DossierTableRow[] = [
+    { k: 'Expected goals', v: player.xg.toFixed(2), fg: 'var(--fg)' },
+    { k: 'Expected assists', v: player.xa.toFixed(2), fg: 'var(--fg)' },
+    { k: 'Minutes', v: String(player.mins), fg: 'var(--fg)' },
+    { k: 'Bonus · BPS', v: `${player.bonus} · ${player.bps}`, fg: 'var(--fg)' },
+    {
+      k: 'Influence, creativity, threat',
+      v: player.ict.map((n) => n.toFixed(0)).join(' · '),
+      fg: 'var(--fg)',
+    },
+    {
+      k: 'Transfers in, out this week',
+      v: `${Math.round(player.transfersInEvent / 1000)}k · ${Math.round(player.transfersOutEvent / 1000)}k`,
+      fg: 'var(--fg)',
+    },
+    {
+      k: 'Price movement this week',
+      v: `${player.priceMove}m`,
+      fg:
+        player.priceDir === 'up'
+          ? 'var(--pos)'
+          : player.priceDir === 'down'
+            ? 'var(--neg)'
+            : 'var(--fg3)',
+    },
+  ]
+
+  return {
+    name: player.name,
+    shortName: surname(player.name),
+    rivalShort: rivalSurname,
+    meta: `${player.team} · ${player.pos} · £${player.price.toFixed(1)}m · ${player.own.toFixed(1)}% owned`,
+    newsLine: player.status === 'ok' ? 'No availability concerns' : player.note,
+    statusFg: STATUS_FG[player.status],
+    summary: `${player.ppg.toFixed(1)} points per game this season, from ${player.mins} minutes played.`,
+    rivalOptions,
+    versus,
+    versusVerdict,
+    table,
+    next: player.next,
+  }
+}
+

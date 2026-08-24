@@ -19,15 +19,15 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import '@/components/fpl-scout.css'
 import { ConnectScreen } from '@/components/ConnectScreen'
-import { Header } from '@/components/Header'
-import { PlayerSheet } from '@/components/PlayerSheet'
-import { Sidebar } from '@/components/Sidebar'
+import { Dossier } from '@/components/Dossier'
+import { Masthead, type MastheadMeter } from '@/components/Masthead'
 import {
-  buildAlerts,
   buildChipStatus,
   buildFixturesByTeamId,
-  buildTransferSuggestions,
+  buildForcedDecisions,
+  buildTeamTotals,
   computeFixturePlanner,
+  computeFreeTransfers,
   getCurrentEvent,
   mapElementToPlayer,
   type FplElement,
@@ -38,14 +38,13 @@ import {
   useRecentTeamIds,
 } from '@/components/recentTeams'
 import { ChipsScreen } from '@/components/screens/ChipsScreen'
-import { DashboardScreen } from '@/components/screens/DashboardScreen'
-import {
-  ExplorerScreen,
-  type ExplorerFilters,
-} from '@/components/screens/ExplorerScreen'
 import { FixturesScreen } from '@/components/screens/FixturesScreen'
-import { TransfersScreen } from '@/components/screens/TransfersScreen'
-import type { Player, Screen } from '@/components/types'
+import {
+  FormBookScreen,
+  type FormBookFilters,
+} from '@/components/screens/FormBookScreen'
+import { TeamSheetScreen } from '@/components/screens/TeamSheetScreen'
+import { PAGES, type Player } from '@/components/types'
 
 function pad(n: number) {
   return String(n).padStart(2, '0')
@@ -78,18 +77,17 @@ export default function Home() {
   const [entryError, setEntryError] = useState('')
   const [teamId, setTeamId] = useState<string | null>(null)
 
-  const [navOpen, setNavOpen] = useState(true)
-  const [screen, setScreen] = useState<Screen>('dash')
+  const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [dismissed, setDismissed] = useState<string[]>([])
   const [now, setNow] = useState(() => Date.now())
   const [horizon, setHorizon] = useState(6)
   const [windowLen, setWindowLen] = useState(3)
   const recentTeamIds = useRecentTeamIds()
 
-  const [filters, setFilters] = useState<ExplorerFilters>({
+  const [filters, setFilters] = useState<FormBookFilters>({
     pos: 'All',
-    team: 'All teams',
+    avail: 'All',
+    team: 'All clubs',
     maxPrice: 15,
     maxOwn: 60,
     sortKey: 'xgi',
@@ -115,6 +113,25 @@ export default function Home() {
       delete document.body.dataset.theme
     }
   }, [])
+
+  // Arrow keys page between the 5 sections. Skipped while a form control
+  // has focus or a modifier is held, and suppressed entirely while the
+  // Dossier is open so the reader isn't paged out from under them
+  // mid-comparison.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (target && /INPUT|SELECT|TEXTAREA/.test(target.tagName)) return
+      if (selectedId != null) return
+      if (e.key === 'ArrowRight') setPage((p) => Math.min(PAGES.length - 1, p + 1))
+      else if (e.key === 'ArrowLeft') setPage((p) => Math.max(0, p - 1))
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId])
 
   const numericTeamId = teamId ? Number(teamId) : NaN
 
@@ -147,7 +164,7 @@ export default function Home() {
     setEntry(v)
     setEntryError('')
     setSelectedId(null)
-    setScreen('dash')
+    setPage(0)
     setTeamId(v)
     addRecentTeamId(v, recentTeamIds)
   }
@@ -168,7 +185,7 @@ export default function Home() {
   const disconnect = () => {
     setTeamId(null)
     setEntry('')
-    setScreen('dash')
+    setPage(0)
     setSelectedId(null)
   }
 
@@ -215,7 +232,6 @@ export default function Home() {
     ? `Lowest average difficulty across any ${effectiveWindowLen} consecutive gameweeks in the GW${currentEvent.id}–GW${currentEvent.id + horizon - 1} range.`
     : ''
   const cellW = horizon <= 6 ? 'auto' : horizon <= 24 ? '64px' : '72px'
-  const cellFont = '11px'
 
   const fixturePlanner = useMemo(() => {
     if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent)
@@ -259,17 +275,25 @@ export default function Home() {
       .filter((p): p is Player => !!p)
   }, [entryEventQuery.data, playersById])
 
+  const squad = useMemo(() => [...xi, ...bench], [xi, bench])
+  const squadIds = useMemo(() => new Set(squad.map((p) => p.id)), [squad])
+  const squadTeams = useMemo(() => squad.map((p) => p.team), [squad])
+
+  const captainId =
+    entryEventQuery.data?.picks.find((p) => p.is_captain)?.element ?? null
+  const viceId =
+    entryEventQuery.data?.picks.find((p) => p.is_vice_captain)?.element ??
+    null
+
   const squadElements = useMemo(() => {
     if (!bootstrapQuery.data || !entryEventQuery.data) return []
-    const squadIds = new Set(entryEventQuery.data.picks.map((p) => p.element))
+    const squadElementIdSet = new Set(
+      entryEventQuery.data.picks.map((p) => p.element)
+    )
     return (bootstrapQuery.data.elements as FplElement[]).filter((el) =>
-      squadIds.has(el.id)
+      squadElementIdSet.has(el.id)
     )
   }, [bootstrapQuery.data, entryEventQuery.data])
-
-  const alerts = useMemo(() => {
-    return buildAlerts(squadElements).filter((a) => !dismissed.includes(a.id))
-  }, [squadElements, dismissed])
 
   const chips = useMemo(
     () =>
@@ -286,46 +310,19 @@ export default function Home() {
   const valueM = (entryEventQuery.data?.entry_history.value ?? 0) / 10
   const eventTransfers =
     entryEventQuery.data?.entry_history.event_transfers ?? 0
-  const overallRank =
-    entryEventQuery.data?.entry_history.overall_rank ??
-    entryQuery.data?.summary_overall_rank ??
-    null
 
-  const rankHistory = entryHistoryQuery.data?.current
-  const rankCur =
-    rankHistory && currentEvent
-      ? rankHistory.find((c) => c.event === currentEvent.id)
-      : undefined
-  const rankPrev =
-    rankHistory && currentEvent
-      ? rankHistory.find((c) => c.event === currentEvent.id - 1)
-      : undefined
-  const rankDelta =
-    rankCur && rankPrev ? rankPrev.overall_rank - rankCur.overall_rank : null
-  const rankNote =
-    rankDelta === null
-      ? '—'
-      : rankDelta === 0
-        ? 'No change'
-        : rankDelta > 0
-          ? `▲ ${rankDelta.toLocaleString('en-GB')} places`
-          : `▼ ${Math.abs(rankDelta).toLocaleString('en-GB')} places`
+  const entryHistoryCurrent = entryHistoryQuery.data?.current
+  const freeTransfers = useMemo(() => {
+    if (!currentEvent || !entryHistoryCurrent) return null
+    return computeFreeTransfers(entryHistoryCurrent, currentEvent.id)
+  }, [entryHistoryCurrent, currentEvent])
 
-  const transfers = useMemo(() => {
-    if (xi.length === 0 || allPlayers.length === 0) return []
-    const squadIds = new Set(
-      entryEventQuery.data?.picks.map((p) => p.element) ?? []
-    )
-    return buildTransferSuggestions(xi, allPlayers, squadIds, bankM)
-  }, [xi, allPlayers, entryEventQuery.data, bankM])
+  const totals = useMemo(
+    () => buildTeamTotals(xi, squad, bankM, valueM),
+    [xi, squad, bankM, valueM]
+  )
 
-  const seasonLabel = useMemo(() => {
-    if (!bootstrapQuery.data?.events.length) return ''
-    const firstYear = new Date(
-      bootstrapQuery.data.events[0].deadline_time
-    ).getFullYear()
-    return `${firstYear}/${String(firstYear + 1).slice(-2)}`
-  }, [bootstrapQuery.data])
+  const forced = useMemo(() => buildForcedDecisions(xi, bench), [xi, bench])
 
   const deadlineMs = currentEvent
     ? new Date(currentEvent.deadline_time).getTime()
@@ -335,31 +332,6 @@ export default function Home() {
     : 0
   const d = Math.floor(diffSecs / 86400)
   const hh = Math.floor((diffSecs % 86400) / 3600)
-  const mm = Math.floor((diffSecs % 3600) / 60)
-  const ss = diffSecs % 60
-  const countdown = `${d}d ${pad(hh)}:${pad(mm)}:${pad(ss)}`
-
-  const initials = useMemo(() => {
-    const p = entryQuery.data
-    if (!p) return 'FS'
-    return `${p.player_first_name.charAt(0)}${p.player_last_name.charAt(0)}`.toUpperCase()
-  }, [entryQuery.data])
-
-  const titles: Record<Screen, [string, string]> = {
-    dash: ['Dashboard', 'Your squad at a glance'],
-    explorer: [
-      'Player Explorer',
-      `${allPlayers.length} players · season stats`,
-    ],
-    fixtures: [
-      'Fixture Planner',
-      fixturePlanner.gws.length
-        ? `${fixturePlanner.gws[0]} – ${fixturePlanner.gws[fixturePlanner.gws.length - 1]} difficulty matrix`
-        : '',
-    ],
-    chips: ['Chip Strategy', 'Usage this season'],
-    transfers: ['Transfer Suggestions', 'Ranked by xGI per million'],
-  }
 
   if (!teamId) {
     return (
@@ -367,7 +339,6 @@ export default function Home() {
         <ConnectScreen
           entry={entry}
           entryError={entryError}
-          connectLabel="Connect team"
           recentTeamIds={recentTeamIds}
           onEntryChange={(v) => {
             setEntry(v)
@@ -443,101 +414,73 @@ export default function Home() {
   // so a team can be perfectly valid while its current-event picks 404.
   const picksAvailable = !!entryEventQuery.data
   const picksUnavailableNotice = (
-    <div className="p-5.5">
-      <Card className="border-border rounded-xl p-6 text-center text-[13px] leading-relaxed text-(--fg2)">
-        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API only
-        exposes a gameweek&apos;s squad once its deadline has passed. Check back
-        after{' '}
+    <div className="flex min-h-[50vh] items-center justify-center px-7.5">
+      <div className="max-w-[46ch] text-center text-[13px] leading-relaxed text-(--fg3) italic">
+        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API
+        only exposes a gameweek&apos;s squad once its deadline has passed.
+        Check back after{' '}
         {new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
           weekday: 'short',
           hour: '2-digit',
           minute: '2-digit',
         })}
         .
-      </Card>
+      </div>
     </div>
   )
 
-  const summary = [
+  const meters: MastheadMeter[] = [
+    { k: 'Gameweek', v: String(currentEvent.id) },
+    { k: 'Deadline', v: `${d}d ${pad(hh)}h`, fg: 'var(--accent)' },
     {
-      label: 'Squad value',
-      value: `£${valueM.toFixed(1)}m`,
-      note: `GW${currentEvent.id}`,
-      dir: 'flat' as const,
+      k: 'Free transfers',
+      v: freeTransfers != null ? String(freeTransfers) : '—',
     },
-    {
-      label: 'In the bank',
-      value: `£${bankM.toFixed(1)}m`,
-      note:
-        eventTransfers === 0
-          ? 'No transfers made'
-          : `${eventTransfers} transfer${eventTransfers > 1 ? 's' : ''} made`,
-      dir: 'flat' as const,
-    },
-    {
-      label: 'Overall rank',
-      value: overallRank ? overallRank.toLocaleString('en-GB') : '—',
-      note: rankNote,
-      dir: rankNote.startsWith('▲')
-        ? ('up' as const)
-        : rankNote.startsWith('▼')
-          ? ('down' as const)
-          : ('flat' as const),
-    },
-    {
-      label: `GW${currentEvent.id} deadline`,
-      value: `${d}d ${pad(hh)}h`,
-      note: new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
-        weekday: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      dir: 'flat' as const,
-    },
+    { k: 'Bank', v: `£${bankM.toFixed(1)}m` },
+    { k: 'Transfers made', v: String(eventTransfers) },
   ]
 
   const sel = selectedId != null ? playersById.get(selectedId) : null
-  const [title, subtitle] = titles[screen]
+  const pageKey = PAGES[page].key
+
+  const goTo = (key: (typeof PAGES)[number]['key']) =>
+    setPage(PAGES.findIndex((p) => p.key === key))
 
   return (
     <div className="fpl-scout min-h-screen" data-theme="dark">
-      <div className="flex min-h-screen">
-        <Sidebar
-          screen={screen}
-          navOpen={navOpen}
-          deadlineLabel={`GW${currentEvent.id} deadline`}
-          countdown={countdown}
-          onNavigate={setScreen}
-          onToggleNav={() => setNavOpen((v) => !v)}
+      <div className="flex min-h-screen flex-col">
+        <Masthead
+          teamId={teamId}
+          meters={meters}
+          pages={PAGES}
+          activePage={pageKey}
+          onNavigate={(key) => setPage(PAGES.findIndex((p) => p.key === key))}
+          onDisconnect={disconnect}
         />
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <Header
-            title={title}
-            subtitle={subtitle}
-            teamId={teamId}
-            gameweekLabel={`Gameweek ${currentEvent.id}${seasonLabel ? ` · ${seasonLabel}` : ''}`}
-            initials={initials}
-            onDisconnect={disconnect}
-          />
-
-          {screen === 'dash' &&
-            (picksAvailable ? (
-              <DashboardScreen
-                summary={summary}
+        <div>
+          {pageKey === 'team-sheet' ? (
+            picksAvailable ? (
+              <TeamSheetScreen
                 xi={xi}
                 bench={bench}
-                alerts={alerts}
+                captainId={captainId}
+                viceId={viceId}
+                totals={totals}
+                forced={forced}
                 onOpenPlayer={setSelectedId}
-                onDismissAlert={(id) => setDismissed((d) => [...d, id])}
+                onNavigate={goTo}
               />
             ) : (
               picksUnavailableNotice
-            ))}
-          {screen === 'explorer' && (
-            <ExplorerScreen
+            )
+          ) : null}
+
+          {pageKey === 'form-book' ? (
+            <FormBookScreen
               players={allPlayers}
               teams={teams}
+              squadIds={squadIds}
               filters={filters}
               onFiltersChange={(patch) =>
                 setFilters((f) => ({ ...f, ...patch }))
@@ -549,20 +492,11 @@ export default function Home() {
                     : { ...f, sortKey: key, sortDir: -1 }
                 )
               }
-              onReset={() =>
-                setFilters({
-                  pos: 'All',
-                  team: 'All teams',
-                  maxPrice: 15,
-                  maxOwn: 60,
-                  sortKey: 'xgi',
-                  sortDir: -1,
-                })
-              }
               onOpenPlayer={setSelectedId}
             />
-          )}
-          {screen === 'fixtures' && (
+          ) : null}
+
+          {pageKey === 'fixtures' ? (
             <FixturesScreen
               gws={fixturePlanner.gws}
               matrix={fixturePlanner.matrix}
@@ -577,22 +511,17 @@ export default function Home() {
               onHorizonChange={setHorizon}
               windowNote={windowNote}
               cellW={cellW}
-              cellFont={cellFont}
+              squadTeams={squadTeams}
             />
-          )}
-          {screen === 'chips' && <ChipsScreen chips={chips} />}
-          {screen === 'transfers' &&
-            (picksAvailable ? (
-              <TransfersScreen transfers={transfers} />
-            ) : (
-              picksUnavailableNotice
-            ))}
-        </main>
+          ) : null}
 
-        {sel ? (
-          <PlayerSheet player={sel} onClose={() => setSelectedId(null)} />
-        ) : null}
+          {pageKey === 'chips' ? <ChipsScreen chips={chips} /> : null}
+        </div>
       </div>
+
+      {sel ? (
+        <Dossier player={sel} squad={squad} onClose={() => setSelectedId(null)} />
+      ) : null}
     </div>
   )
 }
