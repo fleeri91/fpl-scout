@@ -175,16 +175,13 @@ export function FormBookScreen({
   }, [players, squadIds, deferredFilters])
 
   return (
-    <section className="flex h-full flex-col overflow-y-auto px-7.5 py-6.5">
-      <div className="mb-1.5 flex flex-wrap items-end justify-between gap-6">
+    <section className="flex h-full flex-col overflow-y-auto px-7.5 py-5">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-6">
         <div>
-          <h2 className="dsp m-0 mb-0.75 text-[46px] leading-[.98] font-bold">
-            Form book
-          </h2>
-          <p className="m-0 text-[13px] text-(--fg3) italic">
-            {rows.length} players on these terms. Value is points per
-            million; ICT is the game&apos;s influence, creativity and threat
-            index.
+          <span className="dsp text-[27px]">Form book</span>
+          <p className="m-0 mt-0.75 text-[13px] text-(--fg3)">
+            {rows.length} players. Value is points per million; ICT is the
+            game&apos;s influence, creativity and threat index.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-5.5">

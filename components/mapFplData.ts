@@ -3,15 +3,14 @@ import type {
   ChipName,
   ElementTypes,
   Element as FplRawElement,
+  EntryEventHistory,
   EntryHistory,
   Event as FplEvent,
   Fixture,
   Team,
 } from 'fpl-api'
 import type {
-  Delta,
   FixtureCell,
-  PageKey,
   PlayerStatus,
   Player,
   Position,
@@ -84,6 +83,31 @@ export function getCurrentEvent(bootstrap: Bootstrap): FplEvent | undefined {
     bootstrap.events.find((e) => e.is_next) ??
     bootstrap.events[bootstrap.events.length - 1]
   )
+}
+
+// FPL banks unused free transfers up to this cap (the 2024/25+ rule — this
+// doesn't reconstruct older seasons' lower cap).
+const FREE_TRANSFER_CAP = 5
+
+// Free transfers aren't exposed directly by the API — reconstruct the bank
+// by walking event history from GW2 (GW1 is unlimited, so it doesn't
+// consume or grant a banked transfer). Taking a hit (more transfers than
+// were banked) resets the bank to 1 for the following gameweek.
+export function computeFreeTransfers(
+  history: EntryEventHistory[],
+  uptoEventId: number
+): number {
+  const byEvent = new Map(history.map((h) => [h.event, h]))
+  let ft = 1
+  for (let event = 2; event <= uptoEventId; event++) {
+    const h = byEvent.get(event)
+    if (!h) continue
+    ft =
+      h.event_transfers > ft
+        ? 1
+        : Math.min(FREE_TRANSFER_CAP, ft - h.event_transfers + 1)
+  }
+  return ft
 }
 
 export function buildFixturesByTeamId(
@@ -266,58 +290,6 @@ export function computeFixturePlanner(
   return { gws, matrix, bestWindows, windowLen: W }
 }
 
-// ---- Alerts ----
-
-export interface AlertItem {
-  id: string
-  kind: string
-  tone: Delta
-  title: string
-  body: string
-}
-
-export function buildAlerts(squad: FplElement[]): AlertItem[] {
-  const alerts: AlertItem[] = []
-  for (const el of squad) {
-    const moveN = el.cost_change_event / 10
-    if (moveN > 0.05) {
-      alerts.push({
-        id: `price-up-${el.id}`,
-        kind: 'Price rise',
-        tone: 'up',
-        title: `${el.web_name} +${moveN.toFixed(1)} today`,
-        body: `Risen ${moveN.toFixed(1)}m today. Season change: ${(el.cost_change_start / 10).toFixed(1)}m.`,
-      })
-    } else if (moveN < -0.05) {
-      alerts.push({
-        id: `price-down-${el.id}`,
-        kind: 'Price fall',
-        tone: 'down',
-        title: `${el.web_name} ${moveN.toFixed(1)} today`,
-        body: `Fallen ${Math.abs(moveN).toFixed(1)}m today. Season change: ${(el.cost_change_start / 10).toFixed(1)}m.`,
-      })
-    }
-    if (el.status !== 'a') {
-      const label =
-        el.status === 'd'
-          ? 'Doubtful'
-          : el.status === 'i'
-            ? 'Injury'
-            : el.status === 's'
-              ? 'Suspended'
-              : 'Unavailable'
-      alerts.push({
-        id: `status-${el.id}`,
-        kind: label,
-        tone: 'down',
-        title: `${el.web_name}: ${label.toLowerCase()}`,
-        body: el.news?.trim() || 'No further details from the club.',
-      })
-    }
-  }
-  return alerts
-}
-
 // ---- Chip strategy ----
 
 export interface ChipCardView {
@@ -381,7 +353,7 @@ function computeSquadEventImpact(
   })
 }
 
-function confBucket(score: number): { conf: number; confLabel: string } {
+export function confBucket(score: number): { conf: number; confLabel: string } {
   if (score >= 70) return { conf: score, confLabel: 'High' }
   if (score >= 45) return { conf: score, confLabel: 'Medium' }
   return { conf: score, confLabel: 'Low' }
@@ -625,48 +597,138 @@ function surname(name: string): string {
   return parts[parts.length - 1]
 }
 
-// ---- Head to head ----
+// ---- Team sheet: totals ----
 
-export interface HeadToHeadHead {
+export interface TeamTotalRow {
+  k: string
+  v: string
+  fg: string
+}
+
+export function buildTeamTotals(
+  xi: Player[],
+  squad: Player[],
+  bankM: number,
+  valueM: number
+): TeamTotalRow[] {
+  const xiEp = xi.reduce((a, p) => a + p.ep, 0)
+  const flagged = squad.filter((p) => p.status !== 'ok').length
+  return [
+    { k: 'Squad value', v: `£${valueM.toFixed(1)}m`, fg: 'var(--fg)' },
+    { k: 'In the bank', v: `£${bankM.toFixed(1)}m`, fg: 'var(--fg)' },
+    { k: 'XI expected points', v: xiEp.toFixed(1), fg: 'var(--accent)' },
+    { k: 'Flagged', v: String(flagged), fg: 'var(--warn)' },
+  ]
+}
+
+// ---- Transfers ----
+
+export interface ForcedDecision {
+  id: number
+  name: string
+  chance: string
+  note: string
+  where: string
+  dot: string
+}
+
+// A flagged squad player forces a decision whether or not a good
+// replacement exists — surfaced separately from the transfer calls below.
+export function buildForcedDecisions(
+  xi: Player[],
+  bench: Player[]
+): ForcedDecision[] {
+  const dot = (p: Player) => (p.status === 'risk' ? 'var(--warn)' : 'var(--neg)')
+  return [
+    ...xi
+      .filter((p) => p.status !== 'ok')
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        chance: `${p.chance}%`,
+        note: p.note,
+        where: 'Starting XI',
+        dot: dot(p),
+      })),
+    ...bench
+      .filter((p) => p.status !== 'ok')
+      .map((p, i) => ({
+        id: p.id,
+        name: p.name,
+        chance: `${p.chance}%`,
+        note: p.note,
+        where: `Bench ${i + 1}`,
+        dot: dot(p),
+      })),
+  ]
+}
+
+export interface TransferHead {
+  id: number
   name: string
   sub: string
   tag: string
   tagFg: string
 }
 
-export interface HeadToHeadCell {
+export interface TransferMeasureCell {
   v: string
   fg: string
 }
 
-export interface HeadToHeadMeasureRow {
+export interface TransferMeasureRow {
   k: string
-  cells: HeadToHeadCell[]
+  cells: TransferMeasureCell[]
 }
 
-export interface HeadToHeadVerdict {
-  text: string
+export interface TransferSwing {
+  k: string
+  v: string
   fg: string
 }
 
-export interface HeadToHeadCase {
-  outName: string
-  bank: string
-  ft: string
-  rationale: string
-  heads: HeadToHeadHead[]
-  measures: HeadToHeadMeasureRow[]
-  fixtureCells: { next: FixtureCell[] }[]
-  verdicts: HeadToHeadVerdict[]
+export interface TransferReason {
+  n: string
+  text: string
 }
 
-function h2hLine(
+export interface TransferEvidence {
+  club: string
+  clubStrip: FixtureCell[]
+  clubNote: string
+  playerId: number
+  player: string
+  hist: number[]
+  playerNote: string
+}
+
+export interface TransferCallView {
+  id: string
+  kind: string
+  kindFg: string
+  cost: string
+  costBg: string
+  costFg: string
+  verdict: string
+  line: string
+  swing: TransferSwing[]
+  reasons: TransferReason[]
+  against: string
+  conf: number
+  confLabel: string
+  evidence: TransferEvidence | null
+  heads: TransferHead[]
+  measures: TransferMeasureRow[]
+  fixtureCells: { next: FixtureCell[] }[]
+}
+
+function measureRow(
   k: string,
   candidates: Player[],
   f: (p: Player) => number,
   fmt: (n: number) => string,
   better?: (v: number, out: number) => boolean
-): HeadToHeadMeasureRow {
+): TransferMeasureRow {
   const out = f(candidates[0])
   return {
     k,
@@ -687,302 +749,272 @@ function h2hLine(
   }
 }
 
-function mkHeadToHeadCase(
-  outPlayer: Player,
-  alternatives: Player[],
-  bankM: number
-): HeadToHeadCase {
-  const set4 = [outPlayer, ...alternatives]
-
-  const heads: HeadToHeadHead[] = set4.map((p, i) => ({
+function buildCompareTable(outPlayer: Player, alternatives: Player[]) {
+  const set = [outPlayer, ...alternatives]
+  const heads: TransferHead[] = set.map((p, i) => ({
+    id: p.id,
     name: p.name,
-    sub: `${p.team} · ${p.pos} · £${p.price.toFixed(1)}m`,
-    tag: i === 0 ? 'Under review' : i === 1 ? 'Recommended' : 'Alternative',
+    sub: `${p.team} · £${p.price.toFixed(1)}m`,
+    tag: i === 0 ? 'Out' : i === 1 ? 'Recommended' : 'Alternative',
     tagFg: i === 1 ? 'var(--accent)' : 'var(--fg3)',
   }))
-
-  const measures: HeadToHeadMeasureRow[] = [
-    h2hLine('Expected points next round', set4, (p) => p.ep, (n) => n.toFixed(1), (v, o) => v > o),
-    h2hLine('Expected involvement', set4, (p) => p.xgi, (n) => n.toFixed(2), (v, o) => v > o),
-    h2hLine('Per ninety', set4, xgiPer90, (n) => n.toFixed(2), (v, o) => v > o),
-    h2hLine('Points per game', set4, (p) => p.ppg, (n) => n.toFixed(1), (v, o) => v > o),
-    h2hLine('Bonus points system', set4, (p) => p.bps, (n) => n.toFixed(0), (v, o) => v > o),
-    h2hLine('Threat index', set4, (p) => p.ict[2], (n) => n.toFixed(0), (v, o) => v > o),
-    h2hLine('Chance of playing', set4, (p) => p.chance, (n) => `${n.toFixed(0)}%`, (v, o) => v >= o),
-    h2hLine('Price', set4, (p) => p.price, (n) => `£${n.toFixed(1)}m`, (v, o) => v <= o),
-    h2hLine('Owned', set4, (p) => p.own, (n) => `${n.toFixed(1)}%`),
-    h2hLine('Mean difficulty, next five', set4, avgFdr, (n) => n.toFixed(1), (v, o) => v < o),
+  const measures: TransferMeasureRow[] = [
+    measureRow('Expected points', set, (p) => p.ep, (n) => n.toFixed(1), (v, o) => v > o),
+    measureRow('xGI', set, (p) => p.xgi, (n) => n.toFixed(2), (v, o) => v > o),
+    measureRow('xGI per 90', set, xgiPer90, (n) => n.toFixed(2), (v, o) => v > o),
+    measureRow('Form', set, (p) => p.form, (n) => n.toFixed(1), (v, o) => v > o),
+    measureRow('Threat', set, (p) => p.ict[2], (n) => n.toFixed(0), (v, o) => v > o),
+    measureRow('BPS', set, (p) => p.bps, (n) => n.toFixed(0), (v, o) => v > o),
+    measureRow('Chance of playing', set, (p) => p.chance, (n) => `${n.toFixed(0)}%`, (v, o) => v >= o),
+    measureRow('Price', set, (p) => p.price, (n) => `£${n.toFixed(1)}m`, (v, o) => v <= o),
+    measureRow('Owned', set, (p) => p.own, (n) => `${n.toFixed(1)}%`),
+    measureRow('Mean difficulty, next five', set, avgFdr, (n) => n.toFixed(1), (v, o) => v < o),
   ]
+  const fixtureCells = set.map((p) => ({ next: p.next }))
+  return { heads, measures, fixtureCells }
+}
 
-  const fixtureCells = set4.map((p) => ({ next: p.next }))
+function pickAlternatives(
+  outPlayer: Player,
+  allPlayers: Player[],
+  squadIds: Set<number>,
+  budget: number
+): Player[] {
+  return allPlayers
+    .filter(
+      (p) =>
+        p.pos === outPlayer.pos &&
+        !squadIds.has(p.id) &&
+        p.price <= budget &&
+        p.status === 'ok'
+    )
+    .sort((a, b) => b.ep - a.ep)
+    .slice(0, 3)
+}
 
-  const verdicts: HeadToHeadVerdict[] = set4.map((p, i) => {
-    if (i === 0) return { text: 'Sell', fg: 'var(--fg3)' }
-    if (i === 1) {
-      const dP = p.price - outPlayer.price
-      const text =
-        dP < -0.05
-          ? `Frees up £${Math.abs(dP).toFixed(1)}m, and the stronger pick`
-          : dP > 0.05
-            ? `Costs £${dP.toFixed(1)}m more, but clearly stronger`
-            : 'Same price, clearly stronger'
-      return { text, fg: 'var(--accent)' }
-    }
-    const text =
-      p.chance < 100
-        ? 'Alternative, but a fitness doubt'
-        : p.setPieces.length > 0
-          ? 'Alternative, and on set pieces'
-          : 'Alternative at a similar budget'
-    return { text, fg: 'var(--fg3)' }
-  })
+function buildMoveReasons(outPlayer: Player, inPlayer: Player): TransferReason[] {
+  const texts: string[] = []
+  texts.push(
+    outPlayer.status !== 'ok'
+      ? `${outPlayer.name} is a ${outPlayer.chance}% chance of playing. ${outPlayer.note}`
+      : `${outPlayer.name} is the weakest value in the position, on ${outPlayer.ep.toFixed(1)} expected points for £${outPlayer.price.toFixed(1)}m.`
+  )
+
+  const outFdr = avgFdr(outPlayer)
+  const inFdr = avgFdr(inPlayer)
+  if (Math.abs(inFdr - outFdr) >= 0.3) {
+    texts.push(
+      `${inPlayer.name} has the easier run: mean difficulty ${inFdr.toFixed(1)} over the next five, against ${outFdr.toFixed(1)} for ${outPlayer.name}.`
+    )
+  }
+
+  const epGain = inPlayer.ep - outPlayer.ep
+  if (epGain > 0.05) {
+    texts.push(
+      `${inPlayer.name} is projected ${epGain.toFixed(1)} points higher next round, and leads on expected goal involvement, ${inPlayer.xgi.toFixed(2)} against ${outPlayer.xgi.toFixed(2)}.`
+    )
+  }
+
+  const netOut = outPlayer.transfersOutEvent - outPlayer.transfersInEvent
+  const netIn = inPlayer.transfersInEvent - inPlayer.transfersOutEvent
+  if (netOut > 5000 && netIn > 5000) {
+    texts.push(
+      `Momentum runs one way: ${Math.round(outPlayer.transfersOutEvent / 1000)}k managers out of ${outPlayer.name} this week against ${Math.round(inPlayer.transfersInEvent / 1000)}k into ${inPlayer.name}.`
+    )
+  }
+
+  const dP = inPlayer.price - outPlayer.price
+  if (dP < -0.05) {
+    texts.push(`The downgrade frees £${Math.abs(dP).toFixed(1)}m in the bank.`)
+  } else if (dP > 0.05) {
+    texts.push(`${inPlayer.name} costs £${dP.toFixed(1)}m more than ${outPlayer.name}'s sale price.`)
+  }
+
+  return texts.slice(0, 4).map((text, i) => ({ n: String(i + 1), text }))
+}
+
+function transferConfidence(outPlayer: Player, inPlayer: Player) {
+  const base = outPlayer.status !== 'ok' ? 55 : 35
+  const epGain = inPlayer.ep - outPlayer.ep
+  const score = Math.round(Math.max(20, Math.min(92, base + epGain * 10)))
+  return confBucket(score)
+}
+
+function mkTransferCall(
+  id: string,
+  outPlayer: Player,
+  inPlayer: Player,
+  alternatives: Player[]
+): TransferCallView {
+  const epGain = inPlayer.ep - outPlayer.ep
+  const dP = inPlayer.price - outPlayer.price
+  const outFdr = avgFdr(outPlayer)
+  const inFdr = avgFdr(inPlayer)
+  const kind = outPlayer.status !== 'ok' ? 'Make this move' : 'Consider this move'
+
+  const budgetPhrase =
+    dP < -0.05
+      ? `frees £${Math.abs(dP).toFixed(1)}m`
+      : dP > 0.05
+        ? `costs £${dP.toFixed(1)}m more`
+        : 'costs the same'
+  const fixturePhrase =
+    inFdr < outFdr - 0.3
+      ? 'trades a hard run of fixtures for an easier one'
+      : inFdr > outFdr + 0.3
+        ? 'takes on a harder run of fixtures'
+        : 'keeps a similar run of fixtures'
+
+  const line = `${epGain >= 0 ? `Banks ${epGain.toFixed(1)} expected points, ` : 'A lateral move on expected points, '}${budgetPhrase}, and ${fixturePhrase}.`
+
+  const against =
+    outPlayer.status !== 'ok'
+      ? `A start and a return from ${outPlayer.name} this weekend, or ${inPlayer.name} left out of the matchday squad — check team news before the deadline, not just the numbers here.`
+      : `${inPlayer.name} named among the doubtful in the next team news, or ${outPlayer.name}'s fixtures easing sooner than this run shows.`
 
   return {
-    outName: outPlayer.name,
-    bank: `£${bankM.toFixed(1)}m`,
-    ft: 'one free transfer',
-    rationale: `Lowest xGI per £m among your starting XI at ${outPlayer.pos}.`,
-    heads,
-    measures,
-    fixtureCells,
-    verdicts,
+    id,
+    kind,
+    kindFg: 'var(--accent)',
+    cost: 'Free transfer',
+    costBg: 'var(--d1)',
+    costFg: 'var(--d1f)',
+    verdict: `${outPlayer.name} out, ${inPlayer.name} in`,
+    line,
+    swing: [
+      {
+        k: 'Points swing',
+        v: `${epGain >= 0 ? '+' : ''}${epGain.toFixed(1)} EP`,
+        fg: epGain >= 0 ? 'var(--pos)' : 'var(--neg)',
+      },
+      {
+        k: 'Budget',
+        v: dP < -0.05 ? `+£${Math.abs(dP).toFixed(1)}m` : dP > 0.05 ? `−£${dP.toFixed(1)}m` : 'No change',
+        fg: dP <= 0.05 ? 'var(--pos)' : 'var(--neg)',
+      },
+      {
+        k: 'Fixture difficulty',
+        v: `${outFdr.toFixed(1)} → ${inFdr.toFixed(1)}`,
+        fg: inFdr < outFdr ? 'var(--pos)' : inFdr > outFdr ? 'var(--neg)' : 'var(--fg)',
+      },
+    ],
+    reasons: buildMoveReasons(outPlayer, inPlayer),
+    against,
+    ...transferConfidence(outPlayer, inPlayer),
+    evidence: {
+      club: inPlayer.team,
+      clubStrip: inPlayer.next,
+      clubNote: `mean ${inFdr.toFixed(1)} across five, against ${outFdr.toFixed(1)} for ${outPlayer.name}`,
+      playerId: inPlayer.id,
+      player: inPlayer.name,
+      hist: inPlayer.hist,
+      playerNote: `${inPlayer.ep.toFixed(1)} EP, ${inPlayer.xgi.toFixed(2)} xGI this season`,
+    },
+    ...buildCompareTable(outPlayer, alternatives),
   }
 }
 
-export function buildHeadToHead(
-  squadStarters: Player[],
-  allPlayers: Player[],
-  squadIds: Set<number>,
-  bankM: number
-): HeadToHeadCase[] {
-  const ranked = [...squadStarters].sort(
-    (a, b) => a.xgi / Math.max(a.price, 0.1) - b.xgi / Math.max(b.price, 0.1)
-  )
-  const worst = ranked.slice(0, 2)
-
-  return worst
-    .map((o) => {
-      const budget = o.price + bankM
-      const alternatives = allPlayers
-        .filter(
-          (p) =>
-            p.pos === o.pos &&
-            !squadIds.has(p.id) &&
-            p.price <= budget &&
-            p.status === 'ok'
-        )
-        .sort((a, b) => b.xgi - a.xgi)
-        .slice(0, 3)
-      return alternatives.length > 0
-        ? mkHeadToHeadCase(o, alternatives, bankM)
-        : null
-    })
-    .filter((c): c is HeadToHeadCase => c !== null)
+function mkHoldCall(id: string, benchPlayer: Player): TransferCallView {
+  return {
+    id,
+    kind: 'No second move',
+    kindFg: 'var(--fg2)',
+    cost: '−4 avoided',
+    costBg: 'var(--d3)',
+    costFg: 'var(--fg2)',
+    verdict: `Hold. Don't spend a transfer on ${benchPlayer.name}`,
+    line: `${benchPlayer.name} is a ${benchPlayer.chance}% doubt, but sits in the bench order rather than the starting XI. Fixing the flagged starter first is worth more than a transfer here.`,
+    swing: [],
+    reasons: [
+      { n: '1', text: `${benchPlayer.name}: ${benchPlayer.note}` },
+      { n: '2', text: 'A transfer here competes with the starter above it for the same free transfer — the starter costs points every week it stays flagged, the bench player only when called on.' },
+    ],
+    against: `A second starter picking up a knock, which would make bench depth here worth the transfer.`,
+    conf: 30,
+    confLabel: 'Low',
+    evidence: null,
+    heads: [],
+    measures: [],
+    fixtureCells: [],
+  }
 }
 
-// ---- Team sheet: position audit ----
-
-export interface PositionAuditRow {
-  pos: Position
+export interface WatchItem {
+  id: number
+  name: string
   v: string
   fg: string
-  note: string
-  gapValue: number
+  why: string
 }
 
-// Starters only, benchmarked against the best affordable eleven at that
-// spend — bench fodder and injuries would otherwise invent a deficit.
-export function buildPositionAudit(
+export function buildTransferCalls(
   xi: Player[],
+  bench: Player[],
   allPlayers: Player[],
-  squadIds: Set<number>
-): PositionAuditRow[] {
-  const positions: Position[] = ['GKP', 'DEF', 'MID', 'FWD']
+  squadIds: Set<number>,
+  bankM: number,
+  forced: ForcedDecision[]
+): { calls: TransferCallView[]; watch: WatchItem[] } {
+  const forcedNames = new Set(forced.map((f) => f.name))
+  const forcedXi = xi.filter((p) => forcedNames.has(p.name))
+  const forcedBench = bench.filter((p) => forcedNames.has(p.name))
 
-  return positions
-    .map((pos): PositionAuditRow | null => {
-      const mine = xi.filter((p) => p.pos === pos)
-      if (mine.length === 0) return null
+  const primaryOut =
+    forcedXi[0] ??
+    [...xi].sort((a, b) => a.ep / Math.max(a.price, 0.1) - b.ep / Math.max(b.price, 0.1))[0]
 
-      const spend = mine.reduce((a, p) => a + p.price, 0)
-      const epSum = mine.reduce((a, p) => a + p.ep, 0)
-      const affordable = allPlayers
-        .filter((p) => p.pos === pos && p.chance > 0)
-        .sort((a, b) => b.ep - a.ep)
+  const calls: TransferCallView[] = []
+  let watch: WatchItem[] = []
 
-      const best: Player[] = []
-      let budget = spend
-      for (const p of affordable) {
-        if (best.length >= mine.length) break
-        const reserve = (mine.length - best.length - 1) * 4.0
-        if (p.price <= budget - reserve) {
-          best.push(p)
-          budget -= p.price
-        }
-      }
+  if (primaryOut) {
+    const budget = primaryOut.price + bankM
+    const alternatives = pickAlternatives(primaryOut, allPlayers, squadIds, budget)
+    if (alternatives.length > 0) {
+      calls.push(mkTransferCall('c1', primaryOut, alternatives[0], alternatives))
+      watch = alternatives.slice(1).map((p) => ({
+        id: p.id,
+        name: p.name,
+        v: `${p.ep.toFixed(1)} EP`,
+        fg: 'var(--fg2)',
+        why: p.note || `${p.pos} alternative at £${p.price.toFixed(1)}m, ${p.own.toFixed(1)}% owned.`,
+      }))
+    }
+  }
 
-      const gap = epSum - best.reduce((a, p) => a + p.ep, 0)
-      const weakest = [...mine].sort((a, b) => a.ep - b.ep)[0]
-      const upgrade = affordable.find(
-        (p) =>
-          !squadIds.has(p.id) &&
-          p.price <= weakest.price + 0.6 &&
-          p.ep > weakest.ep + 0.5
-      )
+  const secondForced = forcedBench.find((p) => p.name !== primaryOut?.name)
+  if (secondForced) {
+    calls.push(mkHoldCall('c2', secondForced))
+  }
 
-      return {
-        pos,
-        v: `${gap >= -0.05 ? '' : '−'}${Math.abs(gap).toFixed(1)} EP`,
-        fg: gap > -1 ? 'var(--pos)' : gap > -2.5 ? 'var(--warn)' : 'var(--neg)',
-        note:
-          gap > -1
-            ? `As strong as the position allows for the £${spend.toFixed(1)}m spent.`
-            : upgrade
-              ? `${weakest.name} is the drag. ${upgrade.name} costs £${(upgrade.price - weakest.price).toFixed(1)}m more for ${(upgrade.ep - weakest.ep).toFixed(1)} expected points.`
-              : `${weakest.name} is the drag, on ${weakest.ep.toFixed(1)} expected points, but nothing better is affordable.`,
-        gapValue: gap,
-      }
-    })
-    .filter((row): row is PositionAuditRow => row !== null)
+  return { calls, watch }
 }
 
-// ---- Crowd ----
-
-export interface CrowdPulseTile {
-  k: string
-  v: string
-  sub: string
-}
-
-export interface CrowdRow {
-  id: number
-  n: string
+export interface ChipInterplayView {
+  head: string
+  body: string
   name: string
-  v: string
-  owned: string
-  ownedFg: string
+  window: string
+  conf: number
+  confLabel: string
 }
 
-export interface CrowdList {
-  title: string
-  blurb: string
-  items: CrowdRow[]
-}
-
-export interface CrowdDifferential {
-  id: number
-  name: string
-  team: string
-  own: string
-  xgi: string
-}
-
-export interface CrowdMissing {
-  id: number
-  name: string
-  team: string
-  price: string
-  own: string
-}
-
-export interface CrowdView {
-  pulse: CrowdPulseTile[]
-  lists: CrowdList[]
-  differentials: CrowdDifferential[]
-  missing: CrowdMissing[]
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-export function buildCrowdData(
-  allPlayers: Player[],
-  squadIds: Set<number>
-): CrowdView {
-  const held = (id: number) => squadIds.has(id)
-  const crowdRow = (p: Player, i: number, v: string): CrowdRow => ({
-    id: p.id,
-    n: pad2(i + 1),
-    name: p.name,
-    v,
-    owned: held(p.id) ? 'in your side' : 'not owned',
-    ownedFg: held(p.id) ? 'var(--pos)' : 'var(--fg3)',
-  })
-
-  const byIn = [...allPlayers].sort(
-    (a, b) => b.transfersInEvent - a.transfersInEvent
-  )
-  const byOut = [...allPlayers].sort(
-    (a, b) => b.transfersOutEvent - a.transfersOutEvent
-  )
-  const byOwn = [...allPlayers].sort((a, b) => b.own - a.own)
-
-  const mostOwned = byOwn[0]
-  const biggestRiser = byIn[0]
-
-  const pulse: CrowdPulseTile[] = [
-    mostOwned
-      ? {
-          k: 'Most owned',
-          v: mostOwned.name,
-          sub: `${mostOwned.own.toFixed(1)}% of managers`,
-        }
-      : { k: 'Most owned', v: '—', sub: '' },
-    biggestRiser
-      ? {
-          k: 'Biggest riser',
-          v: biggestRiser.name,
-          sub: `+${Math.round(biggestRiser.transfersInEvent / 1000)}k transfers in this week`,
-        }
-      : { k: 'Biggest riser', v: '—', sub: '' },
-  ]
-
-  const lists: CrowdList[] = [
-    {
-      title: 'Most bought this week',
-      blurb:
-        "Where the field is moving before the deadline, from the current gameweek's transfer counts.",
-      items: byIn
-        .slice(0, 6)
-        .map((p, i) =>
-          crowdRow(p, i, `+${Math.round(p.transfersInEvent / 1000)}k`)
-        ),
-    },
-    {
-      title: 'Most sold this week',
-      blurb:
-        'The exodus. Selling with the crowd is safe; selling before it is where rank is made.',
-      items: byOut
-        .slice(0, 6)
-        .map((p, i) =>
-          crowdRow(p, i, `−${Math.round(p.transfersOutEvent / 1000)}k`)
-        ),
-    },
-  ]
-
-  const differentials: CrowdDifferential[] = allPlayers
-    .filter((p) => squadIds.has(p.id) && p.own < 15)
-    .sort((a, b) => b.xgi - a.xgi)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      team: p.team,
-      own: p.own.toFixed(1),
-      xgi: p.xgi.toFixed(2),
-    }))
-
-  const missing: CrowdMissing[] = byOwn
-    .filter((p) => !squadIds.has(p.id) && p.own > 10)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      team: p.team,
-      price: p.price.toFixed(1),
-      own: p.own.toFixed(1),
-    }))
-
-  return { pulse, lists, differentials, missing }
+// The best unused chip by confidence, reframed as a single sentence
+// connecting it to this week's transfer decision.
+export function buildChipInterplay(chips: ChipCardView[]): ChipInterplayView | null {
+  const best = [...chips]
+    .filter((c) => c.status === 'Unused')
+    .sort((a, b) => b.conf - a.conf)[0]
+  if (!best) return null
+  return {
+    head: `${best.name}: ${best.window}`,
+    body:
+      (best.reasons[0] ?? 'No fixture-based case yet for this chip.') +
+      ' Weigh any transfer above against waiting for that window.',
+    name: best.name,
+    window: best.window,
+    conf: best.conf,
+    confLabel: best.confLabel,
+  }
 }
 
 // ---- Dossier ----
@@ -1136,110 +1168,3 @@ export function buildDossier(
   }
 }
 
-// ---- Matchday leads ----
-
-export interface LeadFigure {
-  k: string
-  v: string
-  fg: string
-}
-
-export interface LeadCard {
-  headline: string
-  standfirst: string
-  body: string
-  figures: LeadFigure[]
-  cta: string
-  ctaPage: PageKey
-  size: string
-  standSize: string
-  ruleW: string
-}
-
-export function buildLeads(
-  headToHead: HeadToHeadCase[],
-  chips: ChipCardView[],
-  posAudit: PositionAuditRow[]
-): LeadCard[] {
-  const leads: LeadCard[] = []
-
-  const bestCase = headToHead[0]
-  const inHead = bestCase?.heads[1]
-  if (bestCase && inHead) {
-    const priceRow = bestCase.measures.find((m) => m.k === 'Price')
-    const xgiRow = bestCase.measures.find(
-      (m) => m.k === 'Expected involvement'
-    )
-    const fdrRow = bestCase.measures.find(
-      (m) => m.k === 'Mean difficulty, next five'
-    )
-    leads.push({
-      headline: `${bestCase.outName} out, ${inHead.name} in.`,
-      standfirst: bestCase.rationale,
-      body: `${inHead.name} outweighs ${bestCase.outName} on expected involvement and the run of fixtures, for ${bestCase.bank} in the bank and ${bestCase.ft}.`,
-      figures: [
-        priceRow && {
-          k: 'Price',
-          v: priceRow.cells[1].v,
-          fg: priceRow.cells[1].fg,
-        },
-        xgiRow && {
-          k: 'xGI',
-          v: xgiRow.cells[1].v,
-          fg: xgiRow.cells[1].fg,
-        },
-        fdrRow && {
-          k: 'Next five FDR',
-          v: fdrRow.cells[1].v,
-          fg: fdrRow.cells[1].fg,
-        },
-        { k: 'Cost', v: bestCase.ft, fg: 'var(--fg)' },
-      ].filter((f): f is LeadFigure => !!f),
-      cta: 'See the full comparison',
-      ctaPage: 'head-to-head',
-      size: '44px',
-      standSize: '16px',
-      ruleW: '120px',
-    })
-  }
-
-  const bestChip = [...chips]
-    .filter((c) => c.status === 'Unused')
-    .sort((a, b) => b.conf - a.conf)[0]
-  if (bestChip) {
-    leads.push({
-      headline: `${bestChip.name}: ${bestChip.window}.`,
-      standfirst: bestChip.reasons[0] ?? '',
-      body: bestChip.reasons.slice(1).join(' '),
-      figures: [
-        {
-          k: 'Confidence',
-          v: `${bestChip.confLabel} · ${bestChip.conf}%`,
-          fg: 'var(--accent)',
-        },
-      ],
-      cta: 'Read the chip column',
-      ctaPage: 'chips',
-      size: '32px',
-      standSize: '15px',
-      ruleW: '80px',
-    })
-  }
-
-  const weakest = [...posAudit].sort((a, b) => a.gapValue - b.gapValue)[0]
-  if (weakest && weakest.gapValue < -1) {
-    leads.push({
-      headline: `${weakest.pos} is where the squad leaks expected points.`,
-      standfirst: weakest.note,
-      body: `The position sits ${weakest.v} behind the best affordable eleven at that spend.`,
-      figures: [{ k: weakest.pos, v: weakest.v, fg: weakest.fg }],
-      cta: 'Open the team sheet',
-      ctaPage: 'team-sheet',
-      size: '32px',
-      standSize: '15px',
-      ruleW: '80px',
-    })
-  }
-
-  return leads
-}

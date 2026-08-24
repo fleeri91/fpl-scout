@@ -1,22 +1,10 @@
 'use client'
 
 import type { KeyboardEvent } from 'react'
-import { X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
 export function ConnectScreen({
   entry,
   entryError,
-  connectLabel,
   recentTeamIds,
   onEntryChange,
   onEntryKeyDown,
@@ -26,7 +14,6 @@ export function ConnectScreen({
 }: {
   entry: string
   entryError: string
-  connectLabel: string
   recentTeamIds: string[]
   onEntryChange: (value: string) => void
   onEntryKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
@@ -36,97 +23,87 @@ export function ConnectScreen({
 }) {
   return (
     <div className="grid min-h-screen place-items-center p-6">
-      <div className="flex w-full max-w-107.5 flex-col gap-4.5">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-primary text-primary-foreground flex size-7.5 items-center justify-center rounded-lg text-sm font-extrabold">
-            FS
-          </div>
-          <div className="font-heading text-xl font-extrabold tracking-[-0.03em] uppercase">
-            FPL Scout
-          </div>
+      <div className="w-full max-w-107.5">
+        <div className="dsp mb-4 text-base" style={{ color: 'var(--accent)' }}>
+          FPL&#8202;Scout
         </div>
+        <div
+          className="rounded-(--r-card) border p-6.5 pt-6 pb-5.5"
+          style={{ borderColor: 'var(--border2)', background: 'var(--card)' }}
+        >
+          <div className="dsp text-[28px] leading-[1.06]">
+            Enter your team ID
+          </div>
+          <div className="ed mt-2 text-sm leading-relaxed text-pretty">
+            Everything on the next screen is built from your own squad. Your
+            ID is the number in your team&apos;s URL on the official site —
+            fantasy.premierleague.com/entry/
+            <span className="text-foreground">3821094</span>/event/12.
+          </div>
 
-        <Card className="ring-border gap-0 rounded-xl py-0">
-          <CardHeader className="border-border gap-1 border-b py-4.5">
-            <CardTitle className="text-[22px] font-extrabold tracking-[-0.035em]">
-              Connect your team
-            </CardTitle>
-            <CardDescription className="text-[12.5px] leading-relaxed">
-              Enter your FPL team ID so Scout can pull your squad, transfers and
-              chip history.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3.5 py-4.5">
-            <div className="flex flex-col gap-1.5">
-              <Label
-                htmlFor="team-id"
-                className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase"
-              >
-                Team ID
-              </Label>
-              <Input
-                id="team-id"
-                className="mono border-border bg-muted text-foreground h-auto rounded-lg px-3 py-2.5 text-sm"
-                value={entry}
-                onChange={(e) => onEntryChange(e.target.value)}
-                onKeyDown={onEntryKeyDown}
-                placeholder="e.g. 3842106"
-                inputMode="numeric"
-                // base-ui's Input primitive sets caret-color on the client only
-                // (to draw its own caret) — an expected, benign SSR mismatch.
-                suppressHydrationWarning
-              />
-              {entryError ? (
-                <span data-delta="down" className="text-xs">
-                  {entryError}
-                </span>
-              ) : null}
-              {recentTeamIds.length > 0 ? (
-                <div className="mt-0.5 flex flex-col gap-1.5">
-                  <span className="text-[10px] font-normal tracking-wider text-(--fg3) uppercase">
-                    Recent teams
-                  </span>
-                  <div className="divide-border border-border bg-muted divide-y overflow-hidden rounded-lg border">
-                    {recentTeamIds.map((id) => (
-                      <div key={id} className="flex items-center">
-                        <Button
-                          variant="ghost"
-                          onClick={() => onSelectRecent(id)}
-                          className="mono text-foreground h-auto flex-1 justify-start rounded-none px-3 py-2.5 text-[13px] font-normal"
-                        >
-                          {id}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => onRemoveRecent(id)}
-                          aria-label={`Remove ${id} from recent teams`}
-                          className="mr-1.5 rounded-md text-(--fg3)"
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            <Button
+          <div className="mt-4.5 flex gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={entry}
+              placeholder="e.g. 3821094"
+              onChange={(e) => onEntryChange(e.target.value)}
+              onKeyDown={onEntryKeyDown}
+              className="fig min-w-0 flex-1 rounded-(--r-ctl) border px-3.25 py-2.75 text-[15px]"
+              style={{
+                borderColor: 'var(--border2)',
+                background: 'var(--bg)',
+                color: 'var(--fg)',
+              }}
+              // Sibling shadcn inputs set caret-color on the client only —
+              // matching that here keeps this a benign, expected SSR mismatch.
+              suppressHydrationWarning
+            />
+            <button
               onClick={onConnect}
-              className="h-auto rounded-lg py-2.5 text-[13px] font-semibold"
+              className="rounded-(--r-ctl) px-4.5 py-2.75 text-[13px] font-semibold whitespace-nowrap"
+              style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
             >
-              {connectLabel}
-            </Button>
-            <div className="bg-border h-px" />
-            <div className="text-xs leading-relaxed text-(--fg3)">
-              Find it in the URL of your points page on the official site:{' '}
-              <span className="mono text-(--fg2)">
-                /entry/&lt;your-id&gt;/event/3
-              </span>
-              . Scout only reads public data.
+              Load squad
+            </button>
+          </div>
+          {entryError ? (
+            <div className="mt-1.75 text-xs" style={{ color: 'var(--neg)' }}>
+              {entryError}
             </div>
-          </CardContent>
-        </Card>
+          ) : null}
+
+          {recentTeamIds.length > 0 ? (
+            <div
+              className="mt-5.5 border-t pt-3.5"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <div className="lbl mb-1.5">Recently used</div>
+              {recentTeamIds.map((id) => (
+                <div
+                  key={id}
+                  className="flex items-center justify-between gap-3 border-b py-2.5"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  <button
+                    onClick={() => onSelectRecent(id)}
+                    className="fig flex-1 cursor-pointer text-left text-[13px]"
+                  >
+                    {id}
+                  </button>
+                  <button
+                    onClick={() => onRemoveRecent(id)}
+                    aria-label={`Remove ${id} from recent teams`}
+                    className="cursor-pointer px-1 text-xs"
+                    style={{ color: 'var(--fg3)' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   )

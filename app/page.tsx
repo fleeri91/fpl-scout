@@ -20,17 +20,16 @@ import { Card } from '@/components/ui/card'
 import '@/components/fpl-scout.css'
 import { ConnectScreen } from '@/components/ConnectScreen'
 import { Dossier } from '@/components/Dossier'
-import { Masthead } from '@/components/Masthead'
-import { PageFooter } from '@/components/PageFooter'
+import { Masthead, type MastheadMeter } from '@/components/Masthead'
 import {
-  buildAlerts,
+  buildChipInterplay,
   buildChipStatus,
-  buildCrowdData,
   buildFixturesByTeamId,
-  buildHeadToHead,
-  buildLeads,
-  buildPositionAudit,
+  buildForcedDecisions,
+  buildTeamTotals,
+  buildTransferCalls,
   computeFixturePlanner,
+  computeFreeTransfers,
   getCurrentEvent,
   mapElementToPlayer,
   type FplElement,
@@ -41,15 +40,13 @@ import {
   useRecentTeamIds,
 } from '@/components/recentTeams'
 import { ChipsScreen } from '@/components/screens/ChipsScreen'
-import { CrowdScreen } from '@/components/screens/CrowdScreen'
 import { FixturesScreen } from '@/components/screens/FixturesScreen'
 import {
   FormBookScreen,
   type FormBookFilters,
 } from '@/components/screens/FormBookScreen'
-import { HeadToHeadScreen } from '@/components/screens/HeadToHeadScreen'
-import { MatchdayScreen } from '@/components/screens/MatchdayScreen'
 import { TeamSheetScreen } from '@/components/screens/TeamSheetScreen'
+import { TransfersScreen } from '@/components/screens/TransfersScreen'
 import { PAGES, type Player } from '@/components/types'
 
 function pad(n: number) {
@@ -85,7 +82,6 @@ export default function Home() {
 
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [dismissed, setDismissed] = useState<string[]>([])
   const [now, setNow] = useState(() => Date.now())
   const [horizon, setHorizon] = useState(6)
   const [windowLen, setWindowLen] = useState(3)
@@ -121,10 +117,10 @@ export default function Home() {
     }
   }, [])
 
-  // Arrow keys page the sliding ledger, Escape is handled by the Dossier's
-  // own Sheet/Dialog. Skipped while a form control has focus or a modifier
-  // is held, and suppressed entirely while the Dossier is open so the
-  // reader isn't paged out from under them mid-comparison.
+  // Arrow keys page between the 5 sections. Skipped while a form control
+  // has focus or a modifier is held, and suppressed entirely while the
+  // Dossier is open so the reader isn't paged out from under them
+  // mid-comparison.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
@@ -302,10 +298,6 @@ export default function Home() {
     )
   }, [bootstrapQuery.data, entryEventQuery.data])
 
-  const alerts = useMemo(() => {
-    return buildAlerts(squadElements).filter((a) => !dismissed.includes(a.id))
-  }, [squadElements, dismissed])
-
   const chips = useMemo(
     () =>
       buildChipStatus(
@@ -321,58 +313,26 @@ export default function Home() {
   const valueM = (entryEventQuery.data?.entry_history.value ?? 0) / 10
   const eventTransfers =
     entryEventQuery.data?.entry_history.event_transfers ?? 0
-  const overallRank =
-    entryEventQuery.data?.entry_history.overall_rank ??
-    entryQuery.data?.summary_overall_rank ??
-    null
 
-  const rankHistory = entryHistoryQuery.data?.current
-  const rankCur =
-    rankHistory && currentEvent
-      ? rankHistory.find((c) => c.event === currentEvent.id)
-      : undefined
-  const rankPrev =
-    rankHistory && currentEvent
-      ? rankHistory.find((c) => c.event === currentEvent.id - 1)
-      : undefined
-  const rankDelta =
-    rankCur && rankPrev ? rankPrev.overall_rank - rankCur.overall_rank : null
-  const rankNote =
-    rankDelta === null
-      ? '—'
-      : rankDelta === 0
-        ? 'No change'
-        : rankDelta > 0
-          ? `▲ ${rankDelta.toLocaleString('en-GB')} places`
-          : `▼ ${Math.abs(rankDelta).toLocaleString('en-GB')} places`
+  const entryHistoryCurrent = entryHistoryQuery.data?.current
+  const freeTransfers = useMemo(() => {
+    if (!currentEvent || !entryHistoryCurrent) return null
+    return computeFreeTransfers(entryHistoryCurrent, currentEvent.id)
+  }, [entryHistoryCurrent, currentEvent])
 
-  const posAudit = useMemo(
-    () => buildPositionAudit(xi, allPlayers, squadIds),
-    [xi, allPlayers, squadIds]
+  const totals = useMemo(
+    () => buildTeamTotals(xi, squad, bankM, valueM),
+    [xi, squad, bankM, valueM]
   )
 
-  const crowd = useMemo(
-    () => buildCrowdData(allPlayers, squadIds),
-    [allPlayers, squadIds]
-  )
+  const forced = useMemo(() => buildForcedDecisions(xi, bench), [xi, bench])
 
-  const headToHead = useMemo(() => {
-    if (xi.length === 0 || allPlayers.length === 0) return []
-    return buildHeadToHead(xi, allPlayers, squadIds, bankM)
-  }, [xi, allPlayers, squadIds, bankM])
+  const { calls: transferCalls, watch } = useMemo(() => {
+    if (xi.length === 0 || allPlayers.length === 0) return { calls: [], watch: [] }
+    return buildTransferCalls(xi, bench, allPlayers, squadIds, bankM, forced)
+  }, [xi, bench, allPlayers, squadIds, bankM, forced])
 
-  const leads = useMemo(
-    () => buildLeads(headToHead, chips, posAudit),
-    [headToHead, chips, posAudit]
-  )
-
-  const seasonLabel = useMemo(() => {
-    if (!bootstrapQuery.data?.events.length) return ''
-    const firstYear = new Date(
-      bootstrapQuery.data.events[0].deadline_time
-    ).getFullYear()
-    return `${firstYear}/${String(firstYear + 1).slice(-2)}`
-  }, [bootstrapQuery.data])
+  const chipInterplay = useMemo(() => buildChipInterplay(chips), [chips])
 
   const deadlineMs = currentEvent
     ? new Date(currentEvent.deadline_time).getTime()
@@ -382,9 +342,6 @@ export default function Home() {
     : 0
   const d = Math.floor(diffSecs / 86400)
   const hh = Math.floor((diffSecs % 86400) / 3600)
-  const mm = Math.floor((diffSecs % 3600) / 60)
-  const ss = diffSecs % 60
-  const countdown = `${d}d ${pad(hh)}:${pad(mm)}:${pad(ss)}`
 
   if (!teamId) {
     return (
@@ -392,7 +349,6 @@ export default function Home() {
         <ConnectScreen
           entry={entry}
           entryError={entryError}
-          connectLabel="Connect team"
           recentTeamIds={recentTeamIds}
           onEntryChange={(v) => {
             setEntry(v)
@@ -483,161 +439,109 @@ export default function Home() {
     </div>
   )
 
-  const glance = [
+  const meters: MastheadMeter[] = [
+    { k: 'Gameweek', v: String(currentEvent.id) },
+    { k: 'Deadline', v: `${d}d ${pad(hh)}h`, fg: 'var(--accent)' },
     {
-      label: `GW${currentEvent.id} deadline`,
-      value: `${d}d ${pad(hh)}h`,
-      note: new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
-        weekday: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      dir: 'flat' as const,
+      k: 'Free transfers',
+      v: freeTransfers != null ? String(freeTransfers) : '—',
     },
-    {
-      label: 'Overall rank',
-      value: overallRank ? overallRank.toLocaleString('en-GB') : '—',
-      note: rankNote,
-      dir: rankNote.startsWith('▲')
-        ? ('up' as const)
-        : rankNote.startsWith('▼')
-          ? ('down' as const)
-          : ('flat' as const),
-    },
-    {
-      label: 'Squad value',
-      value: `£${valueM.toFixed(1)}m`,
-      note: `GW${currentEvent.id}`,
-      dir: 'flat' as const,
-    },
-    {
-      label: 'In the bank',
-      value: `£${bankM.toFixed(1)}m`,
-      note:
-        eventTransfers === 0
-          ? 'No transfers made'
-          : `${eventTransfers} transfer${eventTransfers > 1 ? 's' : ''} made`,
-      dir: 'flat' as const,
-    },
+    { k: 'Bank', v: `£${bankM.toFixed(1)}m` },
+    { k: 'Transfers made', v: String(eventTransfers) },
   ]
 
   const sel = selectedId != null ? playersById.get(selectedId) : null
   const pageKey = PAGES[page].key
 
+  const goTo = (key: (typeof PAGES)[number]['key']) =>
+    setPage(PAGES.findIndex((p) => p.key === key))
+
   return (
     <div className="fpl-scout min-h-screen" data-theme="dark">
       <div className="flex h-screen flex-col">
         <Masthead
-          gw={currentEvent.id}
-          season={seasonLabel}
-          countdown={countdown}
           teamId={teamId}
+          meters={meters}
           pages={PAGES}
           activePage={pageKey}
-          onNavigate={(key) =>
-            setPage(PAGES.findIndex((p) => p.key === key))
-          }
+          onNavigate={(key) => setPage(PAGES.findIndex((p) => p.key === key))}
           onDisconnect={disconnect}
         />
 
         <div className="min-h-0 flex-1 overflow-hidden">
-          <div
-            className="flex h-full"
-            style={{
-              width: '700%',
-              transform: `translateX(-${page * (100 / 7)}%)`,
-              transition: 'transform .42s cubic-bezier(.4,0,.2,1)',
-            }}
-          >
-            <div style={{ width: '14.2857%', height: '100%' }}>
-              {picksAvailable ? (
-                <MatchdayScreen
-                  glance={glance}
-                  leads={leads}
-                  alerts={alerts}
-                  onNavigate={(key) =>
-                    setPage(PAGES.findIndex((p) => p.key === key))
-                  }
-                  onDismissAlert={(id) => setDismissed((ds) => [...ds, id])}
-                />
-              ) : (
-                picksUnavailableNotice
-              )}
-            </div>
-            <div style={{ width: '14.2857%', height: '100%' }}>
-              {picksAvailable ? (
-                <TeamSheetScreen
-                  xi={xi}
-                  bench={bench}
-                  captainId={captainId}
-                  viceId={viceId}
-                  posAudit={posAudit}
-                  onOpenPlayer={setSelectedId}
-                />
-              ) : (
-                picksUnavailableNotice
-              )}
-            </div>
-            <div style={{ width: '14.2857%', height: '100%' }}>
-              <FormBookScreen
-                players={allPlayers}
-                teams={teams}
-                squadIds={squadIds}
-                filters={filters}
-                onFiltersChange={(patch) =>
-                  setFilters((f) => ({ ...f, ...patch }))
-                }
-                onSort={(key) =>
-                  setFilters((f) =>
-                    f.sortKey === key
-                      ? { ...f, sortDir: f.sortDir === 1 ? -1 : 1 }
-                      : { ...f, sortKey: key, sortDir: -1 }
-                  )
-                }
+          {pageKey === 'team-sheet' ? (
+            picksAvailable ? (
+              <TeamSheetScreen
+                xi={xi}
+                bench={bench}
+                captainId={captainId}
+                viceId={viceId}
+                totals={totals}
+                forced={forced}
                 onOpenPlayer={setSelectedId}
+                onNavigate={goTo}
               />
-            </div>
-            <div style={{ width: '14.2857%', height: '100%' }}>
-              <FixturesScreen
-                gws={fixturePlanner.gws}
-                matrix={fixturePlanner.matrix}
-                bestWindows={fixturePlanner.bestWindows}
-                windowLen={effectiveWindowLen}
-                windowMax={windowMax}
-                windowLenLabel={windowLenLabel}
-                onWindowLenChange={setWindowLen}
-                horizon={horizon}
-                horizonMax={horizonMax}
-                horizonLabel={horizonLabel}
-                onHorizonChange={setHorizon}
-                windowNote={windowNote}
-                cellW={cellW}
-                squadTeams={squadTeams}
-              />
-            </div>
-            <div style={{ width: '14.2857%', height: '100%' }}>
-              <CrowdScreen crowd={crowd} onOpenPlayer={setSelectedId} />
-            </div>
-            <div style={{ width: '14.2857%', height: '100%' }}>
-              <ChipsScreen chips={chips} />
-            </div>
-            <div style={{ width: '14.2857%', height: '100%' }}>
-              {picksAvailable ? (
-                <HeadToHeadScreen cases={headToHead} />
-              ) : (
-                picksUnavailableNotice
-              )}
-            </div>
-          </div>
-        </div>
+            ) : (
+              picksUnavailableNotice
+            )
+          ) : null}
 
-        <PageFooter
-          pageLabel={`${PAGES[page].roman} of VII`}
-          canPrev={page > 0}
-          canNext={page < PAGES.length - 1}
-          onPrev={() => setPage((p) => Math.max(0, p - 1))}
-          onNext={() => setPage((p) => Math.min(PAGES.length - 1, p + 1))}
-        />
+          {pageKey === 'transfers' ? (
+            picksAvailable ? (
+              <TransfersScreen
+                calls={transferCalls}
+                forced={forced}
+                chipInterplay={chipInterplay}
+                watch={watch}
+                onOpenPlayer={setSelectedId}
+                onNavigate={goTo}
+              />
+            ) : (
+              picksUnavailableNotice
+            )
+          ) : null}
+
+          {pageKey === 'form-book' ? (
+            <FormBookScreen
+              players={allPlayers}
+              teams={teams}
+              squadIds={squadIds}
+              filters={filters}
+              onFiltersChange={(patch) =>
+                setFilters((f) => ({ ...f, ...patch }))
+              }
+              onSort={(key) =>
+                setFilters((f) =>
+                  f.sortKey === key
+                    ? { ...f, sortDir: f.sortDir === 1 ? -1 : 1 }
+                    : { ...f, sortKey: key, sortDir: -1 }
+                )
+              }
+              onOpenPlayer={setSelectedId}
+            />
+          ) : null}
+
+          {pageKey === 'fixtures' ? (
+            <FixturesScreen
+              gws={fixturePlanner.gws}
+              matrix={fixturePlanner.matrix}
+              bestWindows={fixturePlanner.bestWindows}
+              windowLen={effectiveWindowLen}
+              windowMax={windowMax}
+              windowLenLabel={windowLenLabel}
+              onWindowLenChange={setWindowLen}
+              horizon={horizon}
+              horizonMax={horizonMax}
+              horizonLabel={horizonLabel}
+              onHorizonChange={setHorizon}
+              windowNote={windowNote}
+              cellW={cellW}
+              squadTeams={squadTeams}
+            />
+          ) : null}
+
+          {pageKey === 'chips' ? <ChipsScreen chips={chips} /> : null}
+        </div>
       </div>
 
       {sel ? (

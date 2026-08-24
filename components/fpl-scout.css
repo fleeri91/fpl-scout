@@ -1,29 +1,32 @@
 .fpl-scout {
-  /* FPL Scout palette — v3 "weekly ledger", dark forest green + orange mark */
-  --bg: #0a1a13;
-  --card: #0f2318;
-  --card2: #153020;
-  --muted: #153020;
-  --border: #1e4029;
-  --border2: #2e5a3b;
-  --fg: #f1f5ec;
-  --fg2: #a6beac;
-  --fg3: #6c8874;
-  --accent: #f0a32a;
-  --accent-fg: #14210c;
-  --pos: #8fc96b;
-  --neg: #d2542f;
-  --warn: #e8c24a;
-  --d1: #2f6b3f;
-  --d2: #47804a;
-  --d3: #1b2e22;
-  --d4: #a2622a;
-  --d5: #c2452a;
-  --d1f: #eaf6ec;
-  --d2f: #eef6e9;
-  --d3f: #93a899;
-  --d4f: #f9eedf;
-  --d5f: #fce9e3;
+  /* FPL Scout palette — v3, ported from the Claude Design mockup
+     "FPL Scout v3.dc.html" (project "FPL Scout Dashboard"). Dark neutral
+     + orange mark, replacing the earlier "weekly ledger" forest-green
+     theme this file used to hold. */
+  --bg: #141416;
+  --card: #1a1a1d;
+  --card2: #212126;
+  --muted: #212126;
+  --border: #2a2a30;
+  --border2: #3b3b43;
+  --fg: #ededef;
+  --fg2: #a2a2a9;
+  --fg3: #6e6e77;
+  --accent: #ff6a3d;
+  --accent-fg: #1a0a04;
+  --pos: #6fa97a;
+  --neg: #d2503c;
+  --warn: #c99a3c;
+  --d1: #2f5f3d;
+  --d2: #4a6b3c;
+  --d3: #2a2a30;
+  --d4: #8a5a2a;
+  --d5: #a33a28;
+  --d1f: #e6f1e8;
+  --d2f: #ebf2e6;
+  --d3f: #9a9aa2;
+  --d4f: #f7eee2;
+  --d5f: #fae8e3;
   --r-card: 8px;
   --r-ctl: 6px;
   --r-chip: 4px;
@@ -61,30 +64,30 @@
   /* The app is always rendered in this (only) theme today — see the
      data-theme="dark" set in app/page.tsx — so it mirrors the block above
      rather than diverging from it. */
-  --bg: #0a1a13;
-  --card: #0f2318;
-  --card2: #153020;
-  --muted: #153020;
-  --border: #1e4029;
-  --border2: #2e5a3b;
-  --fg: #f1f5ec;
-  --fg2: #a6beac;
-  --fg3: #6c8874;
-  --accent: #f0a32a;
-  --accent-fg: #14210c;
-  --pos: #8fc96b;
-  --neg: #d2542f;
-  --warn: #e8c24a;
-  --d1: #2f6b3f;
-  --d2: #47804a;
-  --d3: #1b2e22;
-  --d4: #a2622a;
-  --d5: #c2452a;
-  --d1f: #eaf6ec;
-  --d2f: #eef6e9;
-  --d3f: #93a899;
-  --d4f: #f9eedf;
-  --d5f: #fce9e3;
+  --bg: #141416;
+  --card: #1a1a1d;
+  --card2: #212126;
+  --muted: #212126;
+  --border: #2a2a30;
+  --border2: #3b3b43;
+  --fg: #ededef;
+  --fg2: #a2a2a9;
+  --fg3: #6e6e77;
+  --accent: #ff6a3d;
+  --accent-fg: #1a0a04;
+  --pos: #6fa97a;
+  --neg: #d2503c;
+  --warn: #c99a3c;
+  --d1: #2f5f3d;
+  --d2: #4a6b3c;
+  --d3: #2a2a30;
+  --d4: #8a5a2a;
+  --d5: #a33a28;
+  --d1f: #e6f1e8;
+  --d2f: #ebf2e6;
+  --d3f: #9a9aa2;
+  --d4f: #f7eee2;
+  --d5f: #fae8e3;
 }
 
 .fpl-scout a {
@@ -97,14 +100,15 @@
 }
 
 .fpl-scout [data-d] {
-  border-radius: 4px;
+  font-family: var(--font-archivo), Archivo, sans-serif;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  letter-spacing: 0.02em;
+  border-radius: var(--r-chip);
 }
 .fpl-scout [data-d='1'] {
   background: var(--d1);
@@ -147,33 +151,19 @@
   background: var(--neg);
 }
 
-.fpl-scout .mono {
-  font-variant-numeric: tabular-nums;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-feature-settings: 'tnum';
-}
-
-.fpl-scout h1 {
-  font-family: var(--font-heading), var(--font-sans), sans-serif;
-}
-
-.fpl-scout [data-d] {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-}
-
-/* v3 "weekly ledger" type system */
+/* v3 type system — Archivo throughout, ported from the mockup */
 .fpl-scout .dsp {
-  font-family: var(--font-heading), var(--font-sans), sans-serif;
+  font-family: var(--font-archivo), Archivo, sans-serif;
   font-weight: 700;
-  letter-spacing: 0.004em;
-  text-transform: uppercase;
+  letter-spacing: -0.022em;
 }
 .fpl-scout .ed {
-  font-family: var(--font-editorial), Georgia, serif;
+  font-family: var(--font-archivo), Archivo, sans-serif;
   font-weight: 400;
+  color: var(--fg2);
 }
 .fpl-scout .drop::first-letter {
-  font-family: var(--font-heading), sans-serif;
+  font-family: var(--font-archivo), Archivo, sans-serif;
   font-weight: 800;
   font-size: 3.4em;
   line-height: 0.82;
@@ -182,19 +172,21 @@
   color: var(--accent);
 }
 .fpl-scout .lbl {
-  font-family: var(--font-sans), sans-serif;
-  font-size: 9.5px;
+  font-family: var(--font-archivo), Archivo, sans-serif;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.13em;
   color: var(--fg3);
 }
-.fpl-scout .fig {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-weight: 600;
+.fpl-scout .fig,
+.fpl-scout .mono {
+  font-family: var(--font-archivo), Archivo, sans-serif;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
   color: var(--fg);
-  letter-spacing: -0.01em;
+  letter-spacing: normal;
 }
 .fpl-scout .sp {
   display: inline-flex;
@@ -207,8 +199,86 @@
   font-size: 8px;
   font-weight: 600;
   color: var(--fg3);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-archivo), Archivo, sans-serif;
   vertical-align: middle;
+}
+
+/* v3 responsive rules, ported from the mockup — masthead/nav/meters and
+   the Transfers verdict/pair layout (moved here now that Transfers shares
+   this stylesheet instead of its own scoped transfers-dc.css). */
+@media (max-width: 1180px) {
+  .fpl-scout [data-lay='split'] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .fpl-scout [data-lay='split'] > aside {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+}
+@media (max-width: 900px) {
+  .fpl-scout header {
+    padding: 11px 18px 0 !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .fpl-scout header > div:first-child {
+    min-width: 0;
+    width: 100%;
+  }
+  .fpl-scout main,
+  .fpl-scout section {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+  .fpl-scout [data-lay='verdict'],
+  .fpl-scout [data-lay='pair'] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+  .fpl-scout [data-lay='verdict'] > div:last-child,
+  .fpl-scout [data-lay='pair'] > div:last-child {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px solid var(--border);
+    padding-top: 11px;
+  }
+  .fpl-scout [data-hl] {
+    font-size: 32px !important;
+  }
+  .fpl-scout [data-lay='meters'] {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 10px;
+  }
+  .fpl-scout [data-lay='nav'] {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    gap: 14px !important;
+    scrollbar-width: none;
+  }
+  .fpl-scout [data-lay='nav']::-webkit-scrollbar {
+    display: none;
+  }
+  .fpl-scout [data-lay='nav'] button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 620px) {
+  .fpl-scout [data-hl] {
+    font-size: 26px !important;
+  }
+  .fpl-scout [data-sm-hide] {
+    display: none !important;
+  }
+  .fpl-scout main,
+  .fpl-scout section {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
 }
 
 .fpl-scout ::-webkit-scrollbar {

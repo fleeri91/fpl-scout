@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import {
+  Archivo,
   Big_Shoulders,
   Familjen_Grotesk,
-  Newsreader,
   Spline_Sans_Mono,
 } from 'next/font/google'
 import './globals.css'
@@ -32,11 +32,12 @@ const splineSansMono = Spline_Sans_Mono({
   subsets: ['latin'],
 })
 
-const newsreader = Newsreader({
+// The v3 display/label/figure type system, ported from the Claude Design
+// mockup ("FPL Scout v3.dc.html") — see components/fpl-scout.css.
+const archivo = Archivo({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-editorial',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-archivo',
 })
 
 export const metadata: Metadata = {
@@ -55,7 +56,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         'font-sans',
         familjenGrotesk.variable,
         bigShouldersDisplay.variable,
-        newsreader.variable
+        archivo.variable
       )}
     >
       <body className="flex min-h-full flex-col">

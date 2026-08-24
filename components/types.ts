@@ -3,28 +3,23 @@ export type Position = 'GKP' | 'DEF' | 'MID' | 'FWD'
 export type Delta = 'up' | 'down' | 'flat'
 
 export type PageKey =
-  | 'matchday'
   | 'team-sheet'
+  | 'transfers'
   | 'form-book'
   | 'fixtures'
-  | 'crowd'
   | 'chips'
-  | 'head-to-head'
 
 export interface PageConfig {
   key: PageKey
   title: string
-  roman: string
 }
 
 export const PAGES: PageConfig[] = [
-  { key: 'matchday', title: 'Matchday', roman: 'I' },
-  { key: 'team-sheet', title: 'Team sheet', roman: 'II' },
-  { key: 'form-book', title: 'Form book', roman: 'III' },
-  { key: 'fixtures', title: 'Fixtures', roman: 'IV' },
-  { key: 'crowd', title: 'Crowd', roman: 'V' },
-  { key: 'chips', title: 'Chips', roman: 'VI' },
-  { key: 'head-to-head', title: 'Head to head', roman: 'VII' },
+  { key: 'team-sheet', title: 'Team sheet' },
+  { key: 'transfers', title: 'Transfers' },
+  { key: 'form-book', title: 'Form book' },
+  { key: 'fixtures', title: 'Fixtures' },
+  { key: 'chips', title: 'Chips' },
 ]
 
 export interface FixtureCell {

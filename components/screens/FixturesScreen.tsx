@@ -68,13 +68,11 @@ export function FixturesScreen({
   }
 
   return (
-    <section className="flex h-full flex-col overflow-hidden px-7.5 pt-6.5 pb-5">
+    <section className="flex h-full flex-col overflow-hidden px-7.5 pt-5 pb-5">
       <div className="flex flex-0 flex-wrap items-end justify-between gap-6">
         <div>
-          <h2 className="dsp m-0 mb-0.75 text-[46px] leading-[.98] font-bold">
-            Fixtures
-          </h2>
-          <p className="m-0 text-[13px] text-(--fg3) italic">
+          <span className="dsp text-[27px]">Fixtures</span>
+          <p className="m-0 mt-0.75 text-[13px] text-(--fg3)">
             GW{gws[0]?.replace('GW', '')} to GW
             {gws[gws.length - 1]?.replace('GW', '')}, using the game&apos;s
             own home and away difficulty ratings. Home fixtures set in the

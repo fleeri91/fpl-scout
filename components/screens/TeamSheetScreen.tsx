@@ -1,44 +1,42 @@
 'use client'
 
-import type { PositionAuditRow } from '../mapFplData'
+import type { ForcedDecision, TeamTotalRow } from '../mapFplData'
 import { Sparkline } from '../Sparkline'
-import type { Player } from '../types'
+import type { PageKey, Player } from '../types'
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0')
+const STATUS_WORD: Record<Player['status'], [string, string]> = {
+  ok: ['', 'var(--fg3)'],
+  risk: ['Doubt', 'var(--warn)'],
+  out: ['Out', 'var(--neg)'],
 }
 
 function XiRow({
   p,
-  n,
   armband,
   onOpen,
 }: {
   p: Player
-  n: number
   armband: string
   onOpen: () => void
 }) {
+  const [, dot] = STATUS_WORD[p.status]
   return (
     <div
-      data-row
       onClick={onOpen}
-      className="border-border grid cursor-pointer items-baseline gap-2.5 border-b py-2 hover:bg-(--card2)"
-      style={{ gridTemplateColumns: '20px minmax(0,1fr) 46px 46px 40px 46px' }}
+      className="border-border grid cursor-pointer items-center gap-2.75 border-b py-1.75 px-3.5 hover:bg-(--card2)"
+      style={{ gridTemplateColumns: '14px minmax(0,1fr) 66px 46px 46px 54px' }}
     >
-      <span className="mono text-[10px] text-(--fg3)">{pad(n)}</span>
-      <span>
-        <span className="text-[15px] font-medium tracking-[-.01em]">
-          {p.name}
-        </span>
+      <span
+        className="block size-1.5 rounded-full"
+        style={{ background: dot }}
+      />
+      <span className="min-w-0">
+        <span className="dsp text-[15px]">{p.name}</span>
         {armband ? (
-          <span className="dsp text-primary ml-1.5 text-[10px]">
+          <span className="fig ml-1.25 text-[9.5px]" style={{ color: 'var(--accent)' }}>
             {armband}
           </span>
         ) : null}
-        <span className="mono ml-1.75 text-[10px] text-(--fg3)">
-          {p.team} · {p.pos}
-        </span>
         {p.setPieces.length > 0 ? (
           <span className="ml-1.5 inline-flex gap-0.75">
             {p.setPieces.map((sp) => (
@@ -48,60 +46,60 @@ function XiRow({
             ))}
           </span>
         ) : null}
+        <span className="fig ml-1.75 text-[9.5px]" style={{ color: 'var(--fg3)' }}>
+          {p.team} · {p.pos}
+        </span>
         {p.status !== 'ok' ? (
-          <span
-            className="mt-0.75 block text-pretty text-[11px] italic"
-            style={{
-              color:
-                p.status === 'risk' ? 'var(--warn)' : 'var(--neg)',
-            }}
-          >
-            {p.note}
+          <span className="ed ml-1.75 text-xs" style={{ color: dot }}>
+            {p.chance}%
           </span>
         ) : null}
       </span>
-      <span className="flex items-end justify-end">
+      <span className="flex justify-end">
         <Sparkline hist={p.hist} width={40} height={15} />
       </span>
-      <span className="mono text-primary text-right text-[13px]">
+      <span className="fig text-right text-[12.5px]" style={{ color: 'var(--accent)' }}>
         {p.xgi.toFixed(2)}
       </span>
-      <span className="mono text-right text-[13px] text-(--fg2)">
-        {p.ep.toFixed(1)}
-      </span>
-      <span className="mono text-right text-xs text-(--fg2)">
+      <span className="fig text-right text-[12.5px]">{p.ep.toFixed(1)}</span>
+      <span className="fig text-right text-[11.5px]" style={{ color: 'var(--fg3)' }}>
         £{p.price.toFixed(1)}
       </span>
     </div>
   )
 }
 
-function BenchRow({ p, n, onOpen }: { p: Player; n: number; onOpen: () => void }) {
+function BenchRow({ p, onOpen }: { p: Player; onOpen: () => void }) {
+  const [word, dot] = STATUS_WORD[p.status]
   return (
     <div
-      data-row
       onClick={onOpen}
-      className="border-border grid cursor-pointer items-baseline gap-2.5 border-b py-1.75 text-(--fg2) hover:bg-(--card2)"
-      style={{ gridTemplateColumns: '20px minmax(0,1fr) 46px 40px 46px' }}
+      className="border-border grid cursor-pointer items-center gap-2.75 border-b py-1.5 px-3.5 hover:bg-(--card2)"
+      style={{ gridTemplateColumns: '14px minmax(0,1fr) 46px 54px' }}
     >
-      <span className="mono text-[10px] text-(--fg3)">{pad(n)}</span>
-      <span>
-        <span className="text-[15.5px]">{p.name}</span>
-        <span className="mono ml-1.75 text-[10px] text-(--fg3)">
+      <span
+        className="block size-1.5 rounded-full"
+        style={{ background: dot }}
+      />
+      <span className="min-w-0">
+        <span className="dsp text-[15.5px]" style={{ color: 'var(--fg2)' }}>
+          {p.name}
+        </span>
+        <span className="fig ml-1.75 text-[9.5px]" style={{ color: 'var(--fg3)' }}>
           {p.team} · {p.pos}
         </span>
         {p.status !== 'ok' ? (
-          <span
-            className="mt-0.5 block text-[11px] italic"
-            style={{ color: p.status === 'risk' ? 'var(--warn)' : 'var(--neg)' }}
-          >
-            {p.note}
+          <span className="ed ml-1.75 text-xs" style={{ color: dot }}>
+            {word} {p.chance}%
           </span>
         ) : null}
       </span>
-      <span className="mono text-right text-xs">{p.xgi.toFixed(2)}</span>
-      <span className="mono text-right text-xs">{p.ep.toFixed(1)}</span>
-      <span className="mono text-right text-xs">£{p.price.toFixed(1)}</span>
+      <span className="fig text-right text-xs" style={{ color: 'var(--fg2)' }}>
+        {p.ep.toFixed(1)}
+      </span>
+      <span className="fig text-right text-[11.5px]" style={{ color: 'var(--fg3)' }}>
+        £{p.price.toFixed(1)}
+      </span>
     </div>
   )
 }
@@ -111,82 +109,115 @@ export function TeamSheetScreen({
   bench,
   captainId,
   viceId,
-  posAudit,
+  totals,
+  forced,
   onOpenPlayer,
+  onNavigate,
 }: {
   xi: Player[]
   bench: Player[]
   captainId: number | null
   viceId: number | null
-  posAudit: PositionAuditRow[]
+  totals: TeamTotalRow[]
+  forced: ForcedDecision[]
   onOpenPlayer: (id: number) => void
+  onNavigate: (key: PageKey) => void
 }) {
   const armbandFor = (id: number) =>
-    id === captainId ? '(C)' : id === viceId ? '(V)' : ''
+    id === captainId ? 'C' : id === viceId ? 'V' : ''
 
   return (
-    <section className="h-full overflow-y-auto px-7.5 py-6.5">
-      <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] items-start gap-8.5">
-        <div>
-          <h2 className="dsp m-0 mb-0.75 text-[46px] leading-[.98] font-bold">
-            Team sheet
-          </h2>
-          <p className="m-0 mb-2.5 text-pretty text-[13px] text-(--fg3) italic">
-            Fifteen names as picked. <span className="sp">P</span> takes
-            penalties, <span className="sp">C</span> corners and indirect
-            free kicks. EP is the game&apos;s own expected points for the
-            coming round.
-          </p>
-          <div
-            className="border-border grid gap-2.5 border-b px-1 pt-2 pb-1.25"
-            style={{
-              gridTemplateColumns: '20px minmax(0,1fr) 46px 46px 40px 46px',
-            }}
-          >
-            <span className="lbl" />
-            <span className="lbl">Player</span>
-            <span className="lbl text-right">Trend</span>
-            <span className="lbl text-right">xGI</span>
-            <span className="lbl text-right">EP</span>
-            <span className="lbl text-right">Price</span>
-          </div>
-          {xi.map((p, i) => (
+    <section
+      data-lay="split"
+      className="grid h-full items-start gap-5.5 overflow-y-auto px-7.5 py-5"
+      style={{ gridTemplateColumns: 'minmax(0,1fr) 300px' }}
+    >
+      <div>
+        <div className="mb-2.5 flex items-baseline gap-3">
+          <span className="dsp text-[27px]">Starting XI</span>
+          <span className="ed text-[13px]" style={{ color: 'var(--fg3)' }}>
+            <span className="sp">P</span> penalties · <span className="sp">C</span>{' '}
+            corners · trend is points over the last five
+          </span>
+        </div>
+        <div
+          className="overflow-hidden rounded-(--r-card) border"
+          style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
+        >
+          {xi.map((p) => (
             <XiRow
               key={p.id}
               p={p}
-              n={i + 1}
               armband={armbandFor(p.id)}
               onOpen={() => onOpenPlayer(p.id)}
             />
           ))}
-          <div className="lbl mt-5 mb-1.5">On the bench, in order</div>
-          {bench.map((p, i) => (
-            <BenchRow
-              key={p.id}
-              p={p}
-              n={i + 12}
-              onOpen={() => onOpenPlayer(p.id)}
-            />
-          ))}
         </div>
 
-        <div className="border-border border-l pl-6.5">
-          <div className="lbl mb-2.25">By position, against the field</div>
-          {posAudit.map((l) => (
-            <div key={l.pos} className="border-border border-b py-2.25">
-              <div className="flex items-baseline justify-between gap-2.5">
-                <span className="dsp text-[16.5px]">{l.pos}</span>
-                <span className="mono text-xs" style={{ color: l.fg }}>
-                  {l.v}
-                </span>
-              </div>
-              <div className="mt-0.75 text-pretty text-xs text-(--fg3) italic">
-                {l.note}
-              </div>
-            </div>
+        <div className="dsp mt-4 mb-2 text-[22px]">Bench, in order</div>
+        <div
+          className="overflow-hidden rounded-(--r-card) border"
+          style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
+        >
+          {bench.map((p) => (
+            <BenchRow key={p.id} p={p} onOpen={() => onOpenPlayer(p.id)} />
           ))}
         </div>
       </div>
+
+      <aside className="flex flex-col gap-3">
+        <div
+          className="rounded-(--r-card) border p-3.5"
+          style={{ borderColor: 'var(--border2)', background: 'var(--card)' }}
+        >
+          {totals.map((t) => (
+            <div
+              key={t.k}
+              className="flex items-baseline justify-between gap-2.5 py-1.25"
+            >
+              <span className="lbl">{t.k}</span>
+              <span className="fig text-base font-semibold" style={{ color: t.fg }}>
+                {t.v}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {forced.length > 0 ? (
+          <div
+            className="rounded-(--r-card) border p-3.5"
+            style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
+          >
+            <div className="lbl mb-1.75">Needs a decision</div>
+            {forced.map((f) => (
+              <div
+                key={f.id}
+                className="border-border border-b py-1.75"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="dsp text-[14.5px]">{f.name}</span>
+                  <span className="fig text-[11px]" style={{ color: f.dot }}>
+                    {f.chance}
+                  </span>
+                </div>
+                <div
+                  className="ed mt-0.5 text-xs text-pretty"
+                  style={{ color: 'var(--fg3)' }}
+                >
+                  {f.note} · {f.where}
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={() => onNavigate('transfers')}
+              className="mt-2.75 cursor-pointer rounded-(--r-ctl) px-3.25 py-1.75 text-xs font-semibold"
+              style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+            >
+              See the transfer call
+            </button>
+          </div>
+        ) : null}
+      </aside>
     </section>
   )
 }
