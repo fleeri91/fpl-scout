@@ -129,7 +129,7 @@ export function TeamSheetScreen({
   return (
     <section
       data-lay="split"
-      className="grid h-full items-start gap-5.5 overflow-y-auto px-7.5 py-5"
+      className="grid items-start gap-5.5 px-7.5 py-5"
       style={{ gridTemplateColumns: 'minmax(0,1fr) 300px' }}
     >
       <div>
@@ -209,11 +209,11 @@ export function TeamSheetScreen({
               </div>
             ))}
             <button
-              onClick={() => onNavigate('transfers')}
+              onClick={() => onNavigate('fixtures')}
               className="mt-2.75 cursor-pointer rounded-(--r-ctl) px-3.25 py-1.75 text-xs font-semibold"
               style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
             >
-              See the transfer call
+              Check fixtures
             </button>
           </div>
         ) : null}

@@ -22,12 +22,10 @@ import { ConnectScreen } from '@/components/ConnectScreen'
 import { Dossier } from '@/components/Dossier'
 import { Masthead, type MastheadMeter } from '@/components/Masthead'
 import {
-  buildChipInterplay,
   buildChipStatus,
   buildFixturesByTeamId,
   buildForcedDecisions,
   buildTeamTotals,
-  buildTransferCalls,
   computeFixturePlanner,
   computeFreeTransfers,
   getCurrentEvent,
@@ -46,7 +44,6 @@ import {
   type FormBookFilters,
 } from '@/components/screens/FormBookScreen'
 import { TeamSheetScreen } from '@/components/screens/TeamSheetScreen'
-import { TransfersScreen } from '@/components/screens/TransfersScreen'
 import { PAGES, type Player } from '@/components/types'
 
 function pad(n: number) {
@@ -327,13 +324,6 @@ export default function Home() {
 
   const forced = useMemo(() => buildForcedDecisions(xi, bench), [xi, bench])
 
-  const { calls: transferCalls, watch } = useMemo(() => {
-    if (xi.length === 0 || allPlayers.length === 0) return { calls: [], watch: [] }
-    return buildTransferCalls(xi, bench, allPlayers, squadIds, bankM, forced)
-  }, [xi, bench, allPlayers, squadIds, bankM, forced])
-
-  const chipInterplay = useMemo(() => buildChipInterplay(chips), [chips])
-
   const deadlineMs = currentEvent
     ? new Date(currentEvent.deadline_time).getTime()
     : null
@@ -424,7 +414,7 @@ export default function Home() {
   // so a team can be perfectly valid while its current-event picks 404.
   const picksAvailable = !!entryEventQuery.data
   const picksUnavailableNotice = (
-    <div className="flex h-full items-center justify-center px-7.5">
+    <div className="flex min-h-[50vh] items-center justify-center px-7.5">
       <div className="max-w-[46ch] text-center text-[13px] leading-relaxed text-(--fg3) italic">
         Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API
         only exposes a gameweek&apos;s squad once its deadline has passed.
@@ -458,7 +448,7 @@ export default function Home() {
 
   return (
     <div className="fpl-scout min-h-screen" data-theme="dark">
-      <div className="flex h-screen flex-col">
+      <div className="flex min-h-screen flex-col">
         <Masthead
           teamId={teamId}
           meters={meters}
@@ -468,7 +458,7 @@ export default function Home() {
           onDisconnect={disconnect}
         />
 
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div>
           {pageKey === 'team-sheet' ? (
             picksAvailable ? (
               <TeamSheetScreen
@@ -478,21 +468,6 @@ export default function Home() {
                 viceId={viceId}
                 totals={totals}
                 forced={forced}
-                onOpenPlayer={setSelectedId}
-                onNavigate={goTo}
-              />
-            ) : (
-              picksUnavailableNotice
-            )
-          ) : null}
-
-          {pageKey === 'transfers' ? (
-            picksAvailable ? (
-              <TransfersScreen
-                calls={transferCalls}
-                forced={forced}
-                chipInterplay={chipInterplay}
-                watch={watch}
                 onOpenPlayer={setSelectedId}
                 onNavigate={goTo}
               />

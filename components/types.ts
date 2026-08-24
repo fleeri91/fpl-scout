@@ -2,21 +2,17 @@ export type PlayerStatus = 'ok' | 'risk' | 'out'
 export type Position = 'GKP' | 'DEF' | 'MID' | 'FWD'
 export type Delta = 'up' | 'down' | 'flat'
 
-export type PageKey =
-  | 'team-sheet'
-  | 'transfers'
-  | 'form-book'
-  | 'fixtures'
-  | 'chips'
+export type PageKey = 'team-sheet' | 'form-book' | 'fixtures' | 'chips'
 
 export interface PageConfig {
   key: PageKey
   title: string
 }
 
+// Transfers is no longer its own tab — its verdict cards render as a
+// permanent panel below whichever of these is active (v3 redesign).
 export const PAGES: PageConfig[] = [
   { key: 'team-sheet', title: 'Team sheet' },
-  { key: 'transfers', title: 'Transfers' },
   { key: 'form-book', title: 'Form book' },
   { key: 'fixtures', title: 'Fixtures' },
   { key: 'chips', title: 'Chips' },

@@ -18,7 +18,7 @@ const AGAINST_TEXT: Record<string, string> = {
 export function ChipsScreen({ chips }: { chips: ChipCardView[] }) {
   return (
     <section
-      className="grid h-full items-start gap-3.5 overflow-y-auto px-7.5 py-5"
+      className="grid items-start gap-3.5 px-7.5 py-5"
       style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
     >
       {chips.map((c, i) => {

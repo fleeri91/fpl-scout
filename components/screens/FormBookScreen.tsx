@@ -175,7 +175,7 @@ export function FormBookScreen({
   }, [players, squadIds, deferredFilters])
 
   return (
-    <section className="flex h-full flex-col overflow-y-auto px-7.5 py-5">
+    <section className="flex flex-col px-7.5 py-5">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-6">
         <div>
           <span className="dsp text-[27px]">Form book</span>
@@ -268,7 +268,7 @@ export function FormBookScreen({
         </div>
       </div>
 
-      <div className="mt-3.5 min-h-0 flex-1 overflow-auto">
+      <div className="mt-3.5 overflow-x-auto">
         <table className="w-full min-w-[900px] border-collapse">
           <thead>
             <tr className="border-border border-t-2 border-b">

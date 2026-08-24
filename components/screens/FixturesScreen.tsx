@@ -68,7 +68,7 @@ export function FixturesScreen({
   }
 
   return (
-    <section className="flex h-full flex-col overflow-hidden px-7.5 pt-5 pb-5">
+    <section className="flex flex-col px-7.5 pt-5 pb-5">
       <div className="flex flex-0 flex-wrap items-end justify-between gap-6">
         <div>
           <span className="dsp text-[27px]">Fixtures</span>
@@ -134,8 +134,8 @@ export function FixturesScreen({
         </div>
       </div>
 
-      <div className="mt-3.5 grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_250px] gap-6.5">
-        <div className="border-border min-h-0 overflow-auto border-t-2">
+      <div className="mt-3.5 grid grid-cols-[minmax(0,1fr)_250px] gap-6.5">
+        <div className="border-border overflow-x-auto border-t-2">
           <table className="w-full border-collapse">
             <thead>
               <tr>
@@ -209,7 +209,7 @@ export function FixturesScreen({
           </table>
         </div>
 
-        <div className="border-border min-h-0 overflow-y-auto border-l pl-5.5">
+        <div className="border-border border-l pl-5.5">
           <div className="lbl mb-1">The favourable stretch</div>
           <p className="mb-3.5 text-[12px] leading-[1.55] text-(--fg3) italic">
             {windowNote}
