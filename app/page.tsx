@@ -219,22 +219,27 @@ export default function Home() {
     [bootstrapQuery.data]
   )
 
+  // The fixture planner is for upcoming decisions, so it starts from the
+  // gameweek after the current one — the current GW is already locked in.
+  const plannerFromEventId = currentEvent ? currentEvent.id + 1 : undefined
   // The FPL season runs 38 gameweeks, so the horizon slider can't reach
-  // further than that from the current gameweek.
-  const horizonMax = currentEvent ? Math.max(3, 39 - currentEvent.id) : 39
+  // further than that from the planner's first gameweek.
+  const horizonMax = plannerFromEventId
+    ? Math.max(3, 39 - plannerFromEventId)
+    : 39
   const windowMax = Math.max(2, Math.min(6, horizon))
   const effectiveWindowLen = Math.max(2, Math.min(windowLen, windowMax))
   const windowLenLabel = `${effectiveWindowLen} GWs`
-  const horizonLabel = currentEvent
-    ? `GW${currentEvent.id} – GW${currentEvent.id + horizon - 1} · ${horizon} weeks`
+  const horizonLabel = plannerFromEventId
+    ? `GW${plannerFromEventId} – GW${plannerFromEventId + horizon - 1} · ${horizon} weeks`
     : ''
-  const windowNote = currentEvent
-    ? `Lowest average difficulty across any ${effectiveWindowLen} consecutive gameweeks in the GW${currentEvent.id}–GW${currentEvent.id + horizon - 1} range.`
+  const windowNote = plannerFromEventId
+    ? `Lowest average difficulty across any ${effectiveWindowLen} consecutive gameweeks in the GW${plannerFromEventId}–GW${plannerFromEventId + horizon - 1} range.`
     : ''
   const cellW = horizon <= 6 ? 'auto' : horizon <= 24 ? '64px' : '72px'
 
   const fixturePlanner = useMemo(() => {
-    if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent)
+    if (!bootstrapQuery.data || !fixturesQuery.data || !plannerFromEventId)
       return {
         gws: [],
         matrix: [],
@@ -244,14 +249,14 @@ export default function Home() {
     return computeFixturePlanner(
       bootstrapQuery.data,
       fixturesQuery.data,
-      currentEvent.id,
+      plannerFromEventId,
       horizon,
       windowLen
     )
   }, [
     bootstrapQuery.data,
     fixturesQuery.data,
-    currentEvent,
+    plannerFromEventId,
     horizon,
     windowLen,
     effectiveWindowLen,
