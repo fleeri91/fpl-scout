@@ -25,13 +25,17 @@ export function PicksScreen({
   const [maxPrice, setMaxPrice] = useState(PRICE_ANY)
   const [hideMine, setHideMine] = useState(false)
 
-  // Form and fixture ease, each scaled to 0–1, weighted equally.
+  // Form and fixture ease, each scaled to 0–1; form carries 75%, fixtures 25%.
+  // Players under 3.0 form or without regular minutes are left out.
   const rows = useMemo(() => {
     const maxForm = Math.max(0.1, ...players.map((p) => p.form))
     return players
       .filter(
         (p) =>
           p.status !== 'out' &&
+          p.form >= 3 &&
+          p.mins >= 180 &&
+          p.bps > 0 &&
           (pos === 'All' || p.pos === pos) &&
           p.price <= maxPrice &&
           !(hideMine && squadIds.has(p.id))
@@ -40,7 +44,9 @@ export function PicksScreen({
         const fx = (fixturesByTeam[p.team] ?? []).slice(0, weeks)
         const fdr = fx.reduce((s, c) => s + c.d, 0) / (fx.length || 1)
         const score = fx.length
-          ? Math.round(((p.form / maxForm) * 0.5 + ((5 - fdr) / 4) * 0.5) * 100)
+          ? Math.round(
+              ((p.form / maxForm) * 0.75 + ((5 - fdr) / 4) * 0.25) * 100
+            )
           : 0
         return { p, fx, fdr, score }
       })
@@ -60,8 +66,9 @@ export function PicksScreen({
           className="ed mt-0.75 max-w-155 text-[13px] text-pretty"
           style={{ color: 'var(--fg3)' }}
         >
-          Players in form with the easiest fixtures ahead. Ranked by form and
-          average fixture difficulty, weighted equally.
+          Players in form with the easiest fixtures ahead. Ranked mainly on form
+          (75%), with fixture difficulty as the tiebreaker (25%). Players
+          without regular minutes are left out.
         </div>
       </div>
 
