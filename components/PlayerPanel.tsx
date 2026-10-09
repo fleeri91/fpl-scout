@@ -58,6 +58,7 @@ export function PlayerPanel({
         className="fixed top-0 right-0 bottom-0 z-61 w-95 max-w-[92vw] overflow-y-auto border-l px-5.5 pt-5.5 pb-7"
         style={{ background: 'var(--card)', borderColor: 'var(--border2)' }}
       >
+        <div data-grab />
         <div className="flex items-start justify-between gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.75">

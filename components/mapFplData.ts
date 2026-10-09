@@ -63,7 +63,10 @@ export function xgiHistory(
   return (history ?? [])
     .slice(-5)
     .map((h) =>
-      num((h as { expected_goal_involvements?: string }).expected_goal_involvements)
+      num(
+        (h as { expected_goal_involvements?: string })
+          .expected_goal_involvements
+      )
     )
 }
 
@@ -145,6 +148,7 @@ export function buildFixturesByTeamId(
         opp: homeOpp,
         label: homeOpp,
         d: f.team_h_difficulty,
+        event: f.event,
       })
     }
     if (byTeamId[f.team_a] && byTeamId[f.team_a].length < count) {
@@ -152,6 +156,7 @@ export function buildFixturesByTeamId(
         opp: awayOpp,
         label: awayOpp,
         d: f.team_a_difficulty,
+        event: f.event,
       })
     }
   }
@@ -222,15 +227,11 @@ export function mapElementToPlayer(
 
 export interface FixturePlannerRow {
   team: string
-  avg: string
-  cells: (FixtureCell & { ring: string })[]
-}
-
-export interface BestWindow {
-  team: string
-  avg: string
-  range: string
-  note: string
+  // Average difficulty across the whole horizon.
+  mean: number
+  cells: FixtureCell[]
+  // Easiest run of `windowLen` consecutive fixtures.
+  best: { start: number; avg: number; range: string }
 }
 
 export function computeFixturePlanner(
@@ -241,67 +242,40 @@ export function computeFixturePlanner(
   windowLen = 3
 ): {
   gws: string[]
-  matrix: FixturePlannerRow[]
-  bestWindows: BestWindow[]
+  rows: FixturePlannerRow[]
   windowLen: number
 } {
   const H = horizon
-  const W = Math.max(2, Math.min(windowLen, H))
+  const W = Math.max(1, Math.min(windowLen, H))
   const byTeamId = buildFixturesByTeamId(bootstrap, fixtures, fromEventId, H)
   const gws = Array.from({ length: H }, (_, i) => `GW${fromEventId + i}`)
 
-  const windows = bootstrap.teams.map((team) => {
+  const rows = bootstrap.teams.map((team) => {
     const cells = byTeamId[team.id] ?? []
-    let best = { i: 0, avg: 9 }
+    let best = { start: 0, avg: 9 }
     for (let i = 0; i <= Math.max(0, cells.length - W); i++) {
       const avg = cells.slice(i, i + W).reduce((s, c) => s + c.d, 0) / W
-      if (avg < best.avg) best = { i, avg }
+      if (avg < best.avg) best = { start: i, avg }
     }
-    const overall = cells.length
+    const first = cells[best.start]?.event ?? fromEventId + best.start
+    const last =
+      cells[Math.min(best.start + W, cells.length) - 1]?.event ??
+      fromEventId + best.start + W - 1
+    const mean = cells.length
       ? cells.reduce((s, c) => s + c.d, 0) / cells.length
       : 0
     return {
       team: team.short_name,
-      start: best.i,
-      avg: best.avg,
+      mean,
       cells,
-      overall,
+      best: {
+        ...best,
+        range: first === last ? `GW${first}` : `GW${first}–${last}`,
+      },
     }
   })
 
-  const topFour = [...windows]
-    .sort((a, b) => a.avg - b.avg)
-    .slice(0, 4)
-    .map((w) => w.team)
-
-  const matrix: FixturePlannerRow[] = windows.map((w) => ({
-    team: w.team,
-    avg: w.overall.toFixed(1),
-    cells: w.cells.map((c, i) => ({
-      ...c,
-      ring:
-        topFour.includes(w.team) && i >= w.start && i < w.start + W
-          ? '2px solid var(--accent)'
-          : 'none',
-    })),
-  }))
-
-  const bestWindows: BestWindow[] = topFour
-    .map((t) => windows.find((w) => w.team === t)!)
-    .map((w) => ({
-      team: w.team,
-      avg: w.avg.toFixed(1),
-      range: `${gws[w.start] ?? gws[0]} – ${gws[Math.min(w.start + W - 1, gws.length - 1)]}`,
-      note:
-        `${W === 3 ? 'Three' : W} straight rated ` +
-        w.cells
-          .slice(w.start, w.start + W)
-          .map((c) => c.d)
-          .join(', ') +
-        '.',
-    }))
-
-  return { gws, matrix, bestWindows, windowLen: W }
+  return { gws, rows, windowLen: W }
 }
 
 // ---- Chip strategy ----
@@ -359,13 +333,21 @@ function computeSquadEventImpact(
       if (teamFixtures.length === 0) blankCount++
       if (teamFixtures.length >= 2) doubleCount++
       for (const f of teamFixtures) {
-        const d = f.team_h === teamId ? f.team_h_difficulty : f.team_a_difficulty
+        const d =
+          f.team_h === teamId ? f.team_h_difficulty : f.team_a_difficulty
         if (d >= 4) badCount++
         totalDifficulty += d
         fixtureSlots++
       }
     }
-    return { event, badCount, blankCount, doubleCount, totalDifficulty, fixtureSlots }
+    return {
+      event,
+      badCount,
+      blankCount,
+      doubleCount,
+      totalDifficulty,
+      fixtureSlots,
+    }
   })
 }
 
@@ -479,7 +461,8 @@ function recommendTripleCaptain(
   horizon: number
 ): { window: string; reasons: string[]; conf: number; confLabel: string } {
   const topPlayer = [...squadElements].sort(
-    (a, b) => num(b.expected_goal_involvements) - num(a.expected_goal_involvements)
+    (a, b) =>
+      num(b.expected_goal_involvements) - num(a.expected_goal_involvements)
   )[0]
 
   if (!topPlayer) {
@@ -502,7 +485,10 @@ function recommendTripleCaptain(
     const avgD =
       teamFixtures.reduce(
         (s, f) =>
-          s + (f.team_h === topPlayer.team ? f.team_h_difficulty : f.team_a_difficulty),
+          s +
+          (f.team_h === topPlayer.team
+            ? f.team_h_difficulty
+            : f.team_a_difficulty),
         0
       ) / teamFixtures.length
     const isDouble = teamFixtures.length >= 2
@@ -515,7 +501,9 @@ function recommendTripleCaptain(
   if (!best) {
     return {
       window: `GW${fromEventId}–GW${fromEventId + horizon - 1}`,
-      reasons: [`${topPlayer.web_name} has no confirmed fixture in this window yet.`],
+      reasons: [
+        `${topPlayer.web_name} has no confirmed fixture in this window yet.`,
+      ],
       ...confBucket(20),
     }
   }
@@ -561,7 +549,12 @@ export function buildChipStatus(
     const unused = plays.length === 0
     const fullyUsed = plays.length >= maxUses
 
-    let rec: { window: string; reasons: string[]; conf: number; confLabel: string }
+    let rec: {
+      window: string
+      reasons: string[]
+      conf: number
+      confLabel: string
+    }
     if (fullyUsed) {
       rec = {
         window: 'Already used this season',
@@ -583,7 +576,12 @@ export function buildChipStatus(
     } else if (key === 'bboost') {
       rec = recommendBenchBoost(impacts, fromEventId, horizon, squadSize)
     } else {
-      rec = recommendTripleCaptain(fixtures, squadElements, fromEventId, horizon)
+      rec = recommendTripleCaptain(
+        fixtures,
+        squadElements,
+        fromEventId,
+        horizon
+      )
     }
 
     return {
@@ -648,7 +646,8 @@ export function buildForcedDecisions(
   xi: Player[],
   bench: Player[]
 ): ForcedDecision[] {
-  const dot = (p: Player) => (p.status === 'risk' ? 'var(--warn)' : 'var(--neg)')
+  const dot = (p: Player) =>
+    p.status === 'risk' ? 'var(--warn)' : 'var(--neg)'
   return [
     ...xi
       .filter((p) => p.status !== 'ok')

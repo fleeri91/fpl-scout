@@ -330,9 +330,104 @@
     width: 100% !important;
   }
 }
-@media (max-width: 380px) {
-  .fpl-scout [data-lay='meters'] > div:nth-child(n + 4) {
+/* Fixtures controls/runs and the phone bottom tab bar + sticky masthead. */
+.fpl-scout [data-tabbar],
+.fpl-scout [data-grab] {
+  display: none;
+}
+@media (max-width: 1180px) {
+  .fpl-scout [data-fxaside] {
+    order: -1;
+  }
+  .fpl-scout [data-runs] {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .fpl-scout [data-runs]::-webkit-scrollbar {
     display: none;
+  }
+  .fpl-scout [data-runs] > button {
+    flex: 0 0 200px;
+    margin-bottom: 0 !important;
+  }
+}
+@media (max-width: 620px) {
+  /* bottom tab bar replaces top nav */
+  .fpl-scout [data-lay='nav'] {
+    display: none !important;
+  }
+  .fpl-scout [data-tabbar] {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    background: var(--card);
+    border-top: 1px solid var(--border2);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .fpl-scout [data-app] {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+  .fpl-scout header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--bg);
+    padding: 10px 14px 10px !important;
+    gap: 9px !important;
+  }
+  .fpl-scout [data-lay='meters'] {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 0 !important;
+    overflow: hidden !important;
+  }
+  .fpl-scout [data-lay='meters'] > div {
+    padding: 6px 10px !important;
+    border-bottom: 1px solid var(--border);
+    min-width: 0;
+  }
+  .fpl-scout [data-lay='meters'] > div:nth-child(3n) {
+    border-right: none !important;
+  }
+  .fpl-scout [data-lay='meters'] > div:nth-child(n + 4) {
+    border-bottom: none;
+  }
+  .fpl-scout [data-grab] {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--border2);
+    margin: -6px auto 12px;
+  }
+  .fpl-scout [data-fxctl] > * {
+    flex: 1 1 100% !important;
+  }
+  .fpl-scout [data-fxctl] [data-seg] {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .fpl-scout [data-fxctl] [data-seg] button {
+    padding: 9px 4px !important;
+  }
+  .fpl-scout [data-fxctl] button {
+    min-height: 40px;
+  }
+  .fpl-scout input[type='range'] {
+    height: 28px;
+  }
+  .fpl-scout input[type='text'] {
+    font-size: 16px !important;
+  }
+  .fpl-scout [data-runs] > button {
+    flex: 0 0 170px;
   }
 }
 

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import '@/components/fpl-scout.css'
 import { ConnectScreen } from '@/components/ConnectScreen'
-import { Masthead, type MastheadMeter } from '@/components/Masthead'
+import { Masthead, TabBar, type MastheadMeter } from '@/components/Masthead'
 import { PlayerPanel } from '@/components/PlayerPanel'
 import {
   buildChipStatus,
@@ -83,6 +83,7 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [horizon, setHorizon] = useState(6)
+  const [windowLen, setWindowLen] = useState(3)
   const recentTeams = useRecentTeams()
   const closePanel = useCallback(() => setSelectedId(null), [])
 
@@ -122,7 +123,8 @@ export default function Home() {
       const target = e.target as HTMLElement | null
       if (target && /INPUT|SELECT|TEXTAREA/.test(target.tagName)) return
       if (selectedId != null) return
-      if (e.key === 'ArrowRight') setPage((p) => Math.min(PAGES.length - 1, p + 1))
+      if (e.key === 'ArrowRight')
+        setPage((p) => Math.min(PAGES.length - 1, p + 1))
       else if (e.key === 'ArrowLeft') setPage((p) => Math.max(0, p - 1))
       else return
       e.preventDefault()
@@ -220,27 +222,30 @@ export default function Home() {
   // The fixture planner is for upcoming decisions, so it starts from the
   // gameweek after the current one — the current GW is already locked in.
   const plannerFromEventId = currentEvent ? currentEvent.id + 1 : undefined
-  // Three to six weeks out, but never past GW38.
+  // Anywhere from one week out to every remaining gameweek through GW38.
   const horizonMax = plannerFromEventId
-    ? Math.max(3, Math.min(6, 39 - plannerFromEventId))
+    ? Math.max(1, 39 - plannerFromEventId)
     : 6
   const effectiveHorizon = Math.min(horizon, horizonMax)
+  // Run length: three to six weeks, never longer than the horizon.
+  const effectiveWindow = Math.min(windowLen, effectiveHorizon)
 
   const fixturePlanner = useMemo(() => {
     if (!bootstrapQuery.data || !fixturesQuery.data || !plannerFromEventId)
-      return { gws: [], matrix: [], bestWindows: [], windowLen: 3 }
+      return { gws: [], rows: [], windowLen: 3 }
     return computeFixturePlanner(
       bootstrapQuery.data,
       fixturesQuery.data,
       plannerFromEventId,
       effectiveHorizon,
-      3
+      effectiveWindow
     )
   }, [
     bootstrapQuery.data,
     fixturesQuery.data,
     plannerFromEventId,
     effectiveHorizon,
+    effectiveWindow,
   ])
 
   const xi = useMemo(() => {
@@ -268,8 +273,7 @@ export default function Home() {
   const captainId =
     entryEventQuery.data?.picks.find((p) => p.is_captain)?.element ?? null
   const viceId =
-    entryEventQuery.data?.picks.find((p) => p.is_vice_captain)?.element ??
-    null
+    entryEventQuery.data?.picks.find((p) => p.is_vice_captain)?.element ?? null
 
   const squadElements = useMemo(() => {
     if (!bootstrapQuery.data || !entryEventQuery.data) return []
@@ -410,9 +414,9 @@ export default function Home() {
   const picksUnavailableNotice = (
     <div className="flex min-h-[50vh] items-center justify-center px-7.5">
       <div className="max-w-[46ch] text-center text-[13px] leading-relaxed text-(--fg3) italic">
-        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API
-        only exposes a gameweek&apos;s squad once its deadline has passed.
-        Check back after{' '}
+        Picks for GW{currentEvent.id} aren&apos;t public yet — the FPL API only
+        exposes a gameweek&apos;s squad once its deadline has passed. Check back
+        after{' '}
         {new Date(currentEvent.deadline_time).toLocaleString('en-GB', {
           weekday: 'short',
           hour: '2-digit',
@@ -446,13 +450,14 @@ export default function Home() {
 
   return (
     <div className="fpl-scout min-h-screen" data-theme="dark">
-      <div className="flex min-h-screen flex-col">
+      <div data-app className="flex min-h-screen flex-col">
+        <TabBar pages={PAGES} activePage={pageKey} onNavigate={goTo} />
         <Masthead
           teamId={teamId}
           meters={meters}
           pages={PAGES}
           activePage={pageKey}
-          onNavigate={(key) => setPage(PAGES.findIndex((p) => p.key === key))}
+          onNavigate={goTo}
           onDisconnect={disconnect}
         />
 
@@ -496,11 +501,13 @@ export default function Home() {
           {pageKey === 'fixtures' ? (
             <FixturesScreen
               gws={fixturePlanner.gws}
-              matrix={fixturePlanner.matrix}
-              bestWindows={fixturePlanner.bestWindows}
+              rows={fixturePlanner.rows}
               horizon={effectiveHorizon}
               horizonMax={horizonMax}
               onHorizonChange={setHorizon}
+              fromEventId={plannerFromEventId ?? 1}
+              windowLen={fixturePlanner.windowLen}
+              onWindowChange={setWindowLen}
               squadTeams={squadTeams}
             />
           ) : null}

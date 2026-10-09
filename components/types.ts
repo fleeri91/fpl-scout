@@ -20,6 +20,8 @@ export interface FixtureCell {
   opp: string
   label: string
   d: number
+  // Gameweek the fixture falls in, when known.
+  event?: number
 }
 
 export interface SetPieceMark {
