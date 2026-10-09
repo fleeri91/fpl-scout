@@ -9,11 +9,9 @@ export interface PageConfig {
   title: string
 }
 
-// Transfers is no longer its own tab — its verdict cards render as a
-// permanent panel below whichever of these is active (v3 redesign).
 export const PAGES: PageConfig[] = [
-  { key: 'team-sheet', title: 'Team sheet' },
-  { key: 'form-book', title: 'Form book' },
+  { key: 'team-sheet', title: 'Team' },
+  { key: 'form-book', title: 'Form' },
   { key: 'fixtures', title: 'Fixtures' },
   { key: 'chips', title: 'Chips' },
 ]

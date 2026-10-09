@@ -18,8 +18,10 @@ const AGAINST_TEXT: Record<string, string> = {
 export function ChipsScreen({ chips }: { chips: ChipCardView[] }) {
   return (
     <section
-      className="grid items-start gap-3.5 px-7.5 py-5"
-      style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+      className="grid flex-1 items-start gap-3.5 px-7.5 pt-5 pb-6.5"
+      style={{
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+      }}
     >
       {chips.map((c, i) => {
         const filledPips =
@@ -118,6 +120,12 @@ export function ChipsScreen({ chips }: { chips: ChipCardView[] }) {
               </div>
               <span className="fig text-[11px]" style={{ color: 'var(--fg2)' }}>
                 {c.confLabel}
+              </span>
+              <span
+                className="fig ml-auto text-[10px] whitespace-nowrap"
+                style={{ color: 'var(--fg3)' }}
+              >
+                {c.plays.toLocaleString('en-GB')} played
               </span>
             </div>
           </div>

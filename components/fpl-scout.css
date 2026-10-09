@@ -202,10 +202,16 @@
   font-family: var(--font-archivo), Archivo, sans-serif;
   vertical-align: middle;
 }
+.fpl-scout [data-exp]:hover {
+  color: var(--accent);
+  border-color: var(--border2);
+}
+.fpl-scout [data-act]:hover {
+  filter: brightness(1.08);
+}
 
-/* v3 responsive rules, ported from the mockup — masthead/nav/meters and
-   the Transfers verdict/pair layout (moved here now that Transfers shares
-   this stylesheet instead of its own scoped transfers-dc.css). */
+/* v3 responsive rules, ported from the mockup — masthead/nav/meters,
+   team-sheet rows and the player panel's bottom-sheet form on phones. */
 @media (max-width: 1180px) {
   .fpl-scout [data-lay='split'] {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -271,6 +277,11 @@
   .fpl-scout [data-hl] {
     font-size: 26px !important;
   }
+  .fpl-scout [data-lay='xi'] {
+    grid-template-columns: 12px minmax(0, 1fr) 42px 46px !important;
+    gap: 8px !important;
+    min-height: 48px;
+  }
   .fpl-scout [data-sm-hide] {
     display: none !important;
   }
@@ -279,15 +290,59 @@
     padding-left: 14px !important;
     padding-right: 14px !important;
   }
+  .fpl-scout [data-scroll] {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* player panel becomes a bottom sheet */
+  .fpl-scout [data-sheet] {
+    top: auto !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 86vh;
+    border-left: none !important;
+    border-top: 1px solid var(--border2);
+    border-radius: 14px 14px 0 0;
+    padding: 18px 16px calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+  .fpl-scout [data-sheet] [data-d] {
+    height: 34px !important;
+  }
+  /* header: wordmark, nav, meters each full width */
+  .fpl-scout header {
+    padding: 10px 14px 0 !important;
+  }
+  .fpl-scout [data-lay='meters'] > div {
+    padding: 7px 12px !important;
+    flex: 0 0 auto;
+  }
+  .fpl-scout [data-lay='nav'] button {
+    padding-bottom: 11px !important;
+    min-height: 40px;
+    align-items: flex-end !important;
+  }
+  /* touch-sized rows */
+  .fpl-scout [data-exp] {
+    min-height: 36px;
+  }
+  /* section controls go full width */
+  .fpl-scout section input[type='range'] {
+    width: 100% !important;
+  }
+}
+@media (max-width: 380px) {
+  .fpl-scout [data-lay='meters'] > div:nth-child(n + 4) {
+    display: none;
+  }
 }
 
 .fpl-scout ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 .fpl-scout ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 2px;
+  border-radius: 8px;
 }
 .fpl-scout ::-webkit-scrollbar-track {
   background: transparent;

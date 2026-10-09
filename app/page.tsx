@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -19,8 +20,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import '@/components/fpl-scout.css'
 import { ConnectScreen } from '@/components/ConnectScreen'
-import { Dossier } from '@/components/Dossier'
 import { Masthead, type MastheadMeter } from '@/components/Masthead'
+import { PlayerPanel } from '@/components/PlayerPanel'
 import {
   buildChipStatus,
   buildFixturesByTeamId,
@@ -30,12 +31,13 @@ import {
   computeFreeTransfers,
   getCurrentEvent,
   mapElementToPlayer,
+  xgiHistory,
   type FplElement,
 } from '@/components/mapFplData'
 import {
-  addRecentTeamId,
-  removeRecentTeamId,
-  useRecentTeamIds,
+  addRecentTeam,
+  updateRecentTeam,
+  useRecentTeams,
 } from '@/components/recentTeams'
 import { ChipsScreen } from '@/components/screens/ChipsScreen'
 import { FixturesScreen } from '@/components/screens/FixturesScreen'
@@ -81,15 +83,11 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [horizon, setHorizon] = useState(6)
-  const [windowLen, setWindowLen] = useState(3)
-  const recentTeamIds = useRecentTeamIds()
+  const recentTeams = useRecentTeams()
+  const closePanel = useCallback(() => setSelectedId(null), [])
 
   const [filters, setFilters] = useState<FormBookFilters>({
     pos: 'All',
-    avail: 'All',
-    team: 'All clubs',
-    maxPrice: 15,
-    maxOwn: 60,
     sortKey: 'xgi',
     sortDir: -1,
   })
@@ -114,9 +112,9 @@ export default function Home() {
     }
   }, [])
 
-  // Arrow keys page between the 5 sections. Skipped while a form control
+  // Arrow keys page between the sections. Skipped while a form control
   // has focus or a modifier is held, and suppressed entirely while the
-  // Dossier is open so the reader isn't paged out from under them
+  // player panel is open so the reader isn't paged out from under them
   // mid-comparison.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -153,9 +151,7 @@ export default function Home() {
   const histByElementId = useMemo(() => {
     const map: Record<number, number[]> = {}
     squadElementIds.forEach((id, i) => {
-      map[id] = (summaries[i]?.data?.history ?? [])
-        .slice(-5)
-        .map((h) => h.total_points)
+      map[id] = xgiHistory(summaries[i]?.data?.history)
     })
     return map
   }, [squadElementIds, summaries])
@@ -166,13 +162,13 @@ export default function Home() {
     setSelectedId(null)
     setPage(0)
     setTeamId(v)
-    addRecentTeamId(v, recentTeamIds)
+    addRecentTeam(v)
   }
 
   const connect = () => {
     const v = entry.trim()
-    if (!/^\d{1,9}$/.test(v)) {
-      setEntryError('Team IDs are numbers only, up to nine digits.')
+    if (!/^\d{1,8}$/.test(v)) {
+      setEntryError('Team IDs are numbers only, up to eight digits.')
       return
     }
     connectWithId(v)
@@ -190,6 +186,13 @@ export default function Home() {
   }
 
   const backToConnect = () => setTeamId(null)
+
+  // Once a team loads, remember its name and rank for the recent list.
+  const entryData = entryQuery.data
+  useEffect(() => {
+    if (teamId && entryData)
+      updateRecentTeam(teamId, entryData.name, entryData.summary_overall_rank)
+  }, [teamId, entryData])
 
   const allPlayers = useMemo<Player[]>(() => {
     if (!bootstrapQuery.data || !fixturesQuery.data || !currentEvent) return []
@@ -214,52 +217,30 @@ export default function Home() {
     [allPlayers]
   )
 
-  const teams = useMemo(
-    () => bootstrapQuery.data?.teams.map((t) => t.short_name) ?? [],
-    [bootstrapQuery.data]
-  )
-
   // The fixture planner is for upcoming decisions, so it starts from the
   // gameweek after the current one — the current GW is already locked in.
   const plannerFromEventId = currentEvent ? currentEvent.id + 1 : undefined
-  // The FPL season runs 38 gameweeks, so the horizon slider can't reach
-  // further than that from the planner's first gameweek.
+  // Three to six weeks out, but never past GW38.
   const horizonMax = plannerFromEventId
-    ? Math.max(3, 39 - plannerFromEventId)
-    : 39
-  const windowMax = Math.max(2, Math.min(6, horizon))
-  const effectiveWindowLen = Math.max(2, Math.min(windowLen, windowMax))
-  const windowLenLabel = `${effectiveWindowLen} GWs`
-  const horizonLabel = plannerFromEventId
-    ? `GW${plannerFromEventId} – GW${plannerFromEventId + horizon - 1} · ${horizon} weeks`
-    : ''
-  const windowNote = plannerFromEventId
-    ? `Lowest average difficulty across any ${effectiveWindowLen} consecutive gameweeks in the GW${plannerFromEventId}–GW${plannerFromEventId + horizon - 1} range.`
-    : ''
-  const cellW = horizon <= 6 ? 'auto' : horizon <= 24 ? '64px' : '72px'
+    ? Math.max(3, Math.min(6, 39 - plannerFromEventId))
+    : 6
+  const effectiveHorizon = Math.min(horizon, horizonMax)
 
   const fixturePlanner = useMemo(() => {
     if (!bootstrapQuery.data || !fixturesQuery.data || !plannerFromEventId)
-      return {
-        gws: [],
-        matrix: [],
-        bestWindows: [],
-        windowLen: effectiveWindowLen,
-      }
+      return { gws: [], matrix: [], bestWindows: [], windowLen: 3 }
     return computeFixturePlanner(
       bootstrapQuery.data,
       fixturesQuery.data,
       plannerFromEventId,
-      horizon,
-      windowLen
+      effectiveHorizon,
+      3
     )
   }, [
     bootstrapQuery.data,
     fixturesQuery.data,
     plannerFromEventId,
-    horizon,
-    windowLen,
-    effectiveWindowLen,
+    effectiveHorizon,
   ])
 
   const xi = useMemo(() => {
@@ -302,19 +283,28 @@ export default function Home() {
 
   const chips = useMemo(
     () =>
-      buildChipStatus(
-        entryHistoryQuery.data,
-        squadElements,
-        fixturesQuery.data,
-        currentEvent?.id
-      ),
-    [entryHistoryQuery.data, squadElements, fixturesQuery.data, currentEvent]
+      bootstrapQuery.data
+        ? buildChipStatus(
+            bootstrapQuery.data,
+            entryHistoryQuery.data,
+            squadElements,
+            fixturesQuery.data,
+            currentEvent?.id
+          )
+        : [],
+    [
+      bootstrapQuery.data,
+      entryHistoryQuery.data,
+      squadElements,
+      fixturesQuery.data,
+      currentEvent,
+    ]
   )
 
   const bankM = (entryEventQuery.data?.entry_history.bank ?? 0) / 10
   const valueM = (entryEventQuery.data?.entry_history.value ?? 0) / 10
-  const eventTransfers =
-    entryEventQuery.data?.entry_history.event_transfers ?? 0
+  const hitsTaken =
+    (entryEventQuery.data?.entry_history.event_transfers_cost ?? 0) / 4
 
   const entryHistoryCurrent = entryHistoryQuery.data?.current
   const freeTransfers = useMemo(() => {
@@ -344,7 +334,7 @@ export default function Home() {
         <ConnectScreen
           entry={entry}
           entryError={entryError}
-          recentTeamIds={recentTeamIds}
+          recentTeams={recentTeams}
           onEntryChange={(v) => {
             setEntry(v)
             setEntryError('')
@@ -352,7 +342,6 @@ export default function Home() {
           onEntryKeyDown={onEntryKeyDown}
           onConnect={connect}
           onSelectRecent={connectWithId}
-          onRemoveRecent={(id) => removeRecentTeamId(id, recentTeamIds)}
         />
       </div>
     )
@@ -442,7 +431,11 @@ export default function Home() {
       v: freeTransfers != null ? String(freeTransfers) : '—',
     },
     { k: 'Bank', v: `£${bankM.toFixed(1)}m` },
-    { k: 'Transfers made', v: String(eventTransfers) },
+    {
+      k: 'Hits taken',
+      v: String(hitsTaken),
+      fg: hitsTaken > 0 ? 'var(--neg)' : 'var(--pos)',
+    },
   ]
 
   const sel = selectedId != null ? playersById.get(selectedId) : null
@@ -463,7 +456,7 @@ export default function Home() {
           onDisconnect={disconnect}
         />
 
-        <div>
+        <div className="flex flex-1 flex-col">
           {pageKey === 'team-sheet' ? (
             picksAvailable ? (
               <TeamSheetScreen
@@ -484,7 +477,6 @@ export default function Home() {
           {pageKey === 'form-book' ? (
             <FormBookScreen
               players={allPlayers}
-              teams={teams}
               squadIds={squadIds}
               filters={filters}
               onFiltersChange={(patch) =>
@@ -506,16 +498,9 @@ export default function Home() {
               gws={fixturePlanner.gws}
               matrix={fixturePlanner.matrix}
               bestWindows={fixturePlanner.bestWindows}
-              windowLen={effectiveWindowLen}
-              windowMax={windowMax}
-              windowLenLabel={windowLenLabel}
-              onWindowLenChange={setWindowLen}
-              horizon={horizon}
+              horizon={effectiveHorizon}
               horizonMax={horizonMax}
-              horizonLabel={horizonLabel}
               onHorizonChange={setHorizon}
-              windowNote={windowNote}
-              cellW={cellW}
               squadTeams={squadTeams}
             />
           ) : null}
@@ -524,9 +509,7 @@ export default function Home() {
         </div>
       </div>
 
-      {sel ? (
-        <Dossier player={sel} squad={squad} onClose={() => setSelectedId(null)} />
-      ) : null}
+      {sel ? <PlayerPanel player={sel} onClose={closePanel} /> : null}
     </div>
   )
 }

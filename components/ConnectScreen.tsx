@@ -1,28 +1,27 @@
 'use client'
 
 import type { KeyboardEvent } from 'react'
+import type { RecentTeam } from './recentTeams'
 
 export function ConnectScreen({
   entry,
   entryError,
-  recentTeamIds,
+  recentTeams,
   onEntryChange,
   onEntryKeyDown,
   onConnect,
   onSelectRecent,
-  onRemoveRecent,
 }: {
   entry: string
   entryError: string
-  recentTeamIds: string[]
+  recentTeams: RecentTeam[]
   onEntryChange: (value: string) => void
   onEntryKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void
   onConnect: () => void
   onSelectRecent: (id: string) => void
-  onRemoveRecent: (id: string) => void
 }) {
   return (
-    <div className="grid min-h-screen place-items-center p-6">
+    <div className="flex min-h-screen items-center justify-center px-5 py-10">
       <div className="w-full max-w-107.5">
         <div className="dsp mb-4 text-base" style={{ color: 'var(--accent)' }}>
           FPL&#8202;Scout
@@ -61,45 +60,53 @@ export function ConnectScreen({
             />
             <button
               onClick={onConnect}
-              className="rounded-(--r-ctl) px-4.5 py-2.75 text-[13px] font-semibold whitespace-nowrap"
+              data-act
+              className="cursor-pointer rounded-(--r-ctl) px-4.5 py-2.75 text-[13px] font-semibold whitespace-nowrap"
               style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
             >
               Load squad
             </button>
           </div>
           {entryError ? (
-            <div className="mt-1.75 text-xs" style={{ color: 'var(--neg)' }}>
+            <div className="ed mt-1.75 text-[12.5px]" style={{ color: 'var(--neg)' }}>
               {entryError}
             </div>
           ) : null}
 
-          {recentTeamIds.length > 0 ? (
+          {recentTeams.length > 0 ? (
             <div
               className="mt-5.5 border-t pt-3.5"
               style={{ borderColor: 'var(--border)' }}
             >
               <div className="lbl mb-1.5">Recently used</div>
-              {recentTeamIds.map((id) => (
-                <div
-                  key={id}
-                  className="flex items-center justify-between gap-3 border-b py-2.5"
-                  style={{ borderColor: 'var(--border)' }}
+              {recentTeams.map((t) => (
+                <button
+                  key={t.id}
+                  data-exp
+                  onClick={() => onSelectRecent(t.id)}
+                  className="flex w-full cursor-pointer items-baseline justify-between gap-3 border-b bg-transparent px-0.5 py-2.5 text-left"
+                  style={{ borderColor: 'var(--border)', color: 'var(--fg)' }}
                 >
-                  <button
-                    onClick={() => onSelectRecent(id)}
-                    className="fig flex-1 cursor-pointer text-left text-[13px]"
-                  >
-                    {id}
-                  </button>
-                  <button
-                    onClick={() => onRemoveRecent(id)}
-                    aria-label={`Remove ${id} from recent teams`}
-                    className="cursor-pointer px-1 text-xs"
-                    style={{ color: 'var(--fg3)' }}
-                  >
-                    ✕
-                  </button>
-                </div>
+                  <span>
+                    <span className="dsp text-[15px]">
+                      {t.name ?? `Team ${t.id}`}
+                    </span>
+                    <span
+                      className="fig ml-2 text-[11px]"
+                      style={{ color: 'var(--fg3)' }}
+                    >
+                      {t.id}
+                    </span>
+                  </span>
+                  {t.rank != null ? (
+                    <span
+                      className="fig text-[11.5px]"
+                      style={{ color: 'var(--fg3)' }}
+                    >
+                      rank {t.rank.toLocaleString('en-GB')}
+                    </span>
+                  ) : null}
+                </button>
               ))}
             </div>
           ) : null}

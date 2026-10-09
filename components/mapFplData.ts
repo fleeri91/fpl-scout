@@ -1,6 +1,7 @@
 import type {
   Bootstrap,
   ChipName,
+  ElementSummaryFixture,
   ElementTypes,
   Element as FplRawElement,
   EntryEventHistory,
@@ -51,6 +52,19 @@ export type FplElement = FplRawElement & {
   expected_goals?: string
   expected_assists?: string
   expected_goal_involvements?: string
+}
+
+// xGI per gameweek, last five — the trend line on Team, Form and the
+// player panel. Same typing gap as above: element-summary's history rows
+// carry expected_goal_involvements, fpl-api just doesn't declare it.
+export function xgiHistory(
+  history: ElementSummaryFixture[] | undefined
+): number[] {
+  return (history ?? [])
+    .slice(-5)
+    .map((h) =>
+      num((h as { expected_goal_involvements?: string }).expected_goal_involvements)
+    )
 }
 
 function num(v: unknown): number {
@@ -167,7 +181,7 @@ export function mapElementToPlayer(
   element: FplElement,
   bootstrap: Bootstrap,
   fixturesByTeamId: Record<number, FixtureCell[]>,
-  histPoints: number[] = []
+  hist: number[] = []
 ): Player {
   const moveN = element.cost_change_event / 10
   return {
@@ -184,7 +198,7 @@ export function mapElementToPlayer(
     mins: element.minutes,
     status: statusToPlayerStatus(element.status),
     note: element.news?.trim() || defaultNote(element),
-    hist: histPoints,
+    hist,
     priceMove: (moveN > 0 ? '+' : '') + moveN.toFixed(1),
     priceDir: moveN > 0.05 ? 'up' : moveN < -0.05 ? 'down' : ('flat' as const),
     next: fixturesByTeamId[element.team]?.slice(0, 5) ?? [],
@@ -279,12 +293,12 @@ export function computeFixturePlanner(
       avg: w.avg.toFixed(1),
       range: `${gws[w.start] ?? gws[0]} – ${gws[Math.min(w.start + W - 1, gws.length - 1)]}`,
       note:
-        `${W} straight fixtures rated ` +
+        `${W === 3 ? 'Three' : W} straight rated ` +
         w.cells
           .slice(w.start, w.start + W)
           .map((c) => c.d)
           .join(', ') +
-        '. Worth targeting assets here.',
+        '.',
     }))
 
   return { gws, matrix, bestWindows, windowLen: W }
@@ -303,6 +317,8 @@ export interface ChipCardView {
   reasons: string[]
   conf: number
   confLabel: string
+  // Managers who've played this chip so far this season, all gameweeks.
+  plays: number
 }
 
 const CHIP_LABELS: Record<ChipName, string> = {
@@ -523,6 +539,7 @@ function recommendTripleCaptain(
 }
 
 export function buildChipStatus(
+  bootstrap: Bootstrap,
   history: EntryHistory | undefined,
   squadElements: FplElement[],
   fixtures: Fixture[] | undefined,
@@ -579,22 +596,15 @@ export function buildChipStatus(
       badgeBg: unused ? 'var(--muted)' : 'transparent',
       badgeBorder: 'var(--border)',
       badgeFg: unused ? 'var(--fg2)' : 'var(--fg3)',
+      plays: bootstrap.events.reduce(
+        (sum, ev) =>
+          sum +
+          (ev.chip_plays.find((c) => c.chip_name === key)?.num_played ?? 0),
+        0
+      ),
       ...rec,
     }
   })
-}
-
-function xgiPer90(p: Player): number {
-  return p.mins > 0 ? p.xgi / (p.mins / 90) : 0
-}
-
-function avgFdr(p: Player): number {
-  return p.next.length ? p.next.reduce((s, f) => s + f.d, 0) / p.next.length : 0
-}
-
-function surname(name: string): string {
-  const parts = name.trim().split(' ')
-  return parts[parts.length - 1]
 }
 
 // ---- Team sheet: totals ----
@@ -662,155 +672,3 @@ export function buildForcedDecisions(
       })),
   ]
 }
-
-// ---- Dossier ----
-
-export interface DossierRivalOption {
-  id: number
-  label: string
-  selected: boolean
-}
-
-export interface DossierVersusRow {
-  k: string
-  a: string
-  b: string
-  delta: string
-  fg: string
-}
-
-export interface DossierTableRow {
-  k: string
-  v: string
-  fg: string
-}
-
-export interface DossierView {
-  name: string
-  shortName: string
-  rivalShort: string
-  meta: string
-  newsLine: string
-  statusFg: string
-  summary: string
-  rivalOptions: DossierRivalOption[]
-  versus: DossierVersusRow[]
-  versusVerdict: string
-  table: DossierTableRow[]
-  next: FixtureCell[]
-}
-
-const STATUS_FG: Record<PlayerStatus, string> = {
-  ok: 'var(--fg3)',
-  risk: 'var(--warn)',
-  out: 'var(--neg)',
-}
-
-export function buildDossier(
-  player: Player,
-  rivalId: number | null,
-  squad: Player[]
-): DossierView | null {
-  const pool = squad.filter((p) => p.id !== player.id)
-  const samePos = pool.filter((p) => p.pos === player.pos)
-  const candidates = samePos.length ? samePos : pool
-  if (candidates.length === 0) return null
-
-  const rival =
-    (rivalId != null && candidates.find((p) => p.id === rivalId)) ||
-    [...candidates].sort((a, b) => a.ep - b.ep)[0]
-
-  const rivalOptions: DossierRivalOption[] = candidates.map((p) => ({
-    id: p.id,
-    label: `${p.name} · ${p.pos} · £${p.price.toFixed(1)}m`,
-    selected: p.id === rival.id,
-  }))
-
-  const cmp = (
-    k: string,
-    f: (p: Player) => number,
-    dp: number,
-    lowerBetter = false
-  ): DossierVersusRow => {
-    const a = f(player)
-    const b = f(rival)
-    const diff = a - b
-    const good = lowerBetter ? diff < 0 : diff > 0
-    return {
-      k,
-      a: a.toFixed(dp),
-      b: b.toFixed(dp),
-      delta:
-        (diff > 0 ? '+' : diff < 0 ? '−' : '') + Math.abs(diff).toFixed(dp),
-      fg:
-        Math.abs(diff) < 0.005
-          ? 'var(--fg3)'
-          : good
-            ? 'var(--pos)'
-            : 'var(--neg)',
-    }
-  }
-
-  const versus: DossierVersusRow[] = [
-    cmp('Expected points', (p) => p.ep, 1),
-    cmp('Expected involvement', (p) => p.xgi, 2),
-    cmp('Per ninety', xgiPer90, 2),
-    cmp('Points per game', (p) => p.ppg, 1),
-    cmp('Price', (p) => p.price, 1, true),
-    cmp('Value per million', (p) => (p.price > 0 ? p.ppg / p.price : 0), 2),
-    cmp('Mean difficulty, next five', avgFdr, 1, true),
-    cmp('Chance of playing', (p) => p.chance, 0),
-  ]
-
-  const wins = versus.filter((v) => v.fg === 'var(--pos)').length
-  const rivalSurname = surname(rival.name)
-  const versusVerdict =
-    wins >= 6
-      ? `Clearly ahead of ${rivalSurname} on ${wins} of eight measures. A straight upgrade if the money is there.`
-      : wins >= 4
-        ? `Ahead on ${wins} of eight. Better, but not by enough to spend a transfer on alone.`
-        : `Behind ${rivalSurname} on most measures. No case for the switch this week.`
-
-  const table: DossierTableRow[] = [
-    { k: 'Expected goals', v: player.xg.toFixed(2), fg: 'var(--fg)' },
-    { k: 'Expected assists', v: player.xa.toFixed(2), fg: 'var(--fg)' },
-    { k: 'Minutes', v: String(player.mins), fg: 'var(--fg)' },
-    { k: 'Bonus · BPS', v: `${player.bonus} · ${player.bps}`, fg: 'var(--fg)' },
-    {
-      k: 'Influence, creativity, threat',
-      v: player.ict.map((n) => n.toFixed(0)).join(' · '),
-      fg: 'var(--fg)',
-    },
-    {
-      k: 'Transfers in, out this week',
-      v: `${Math.round(player.transfersInEvent / 1000)}k · ${Math.round(player.transfersOutEvent / 1000)}k`,
-      fg: 'var(--fg)',
-    },
-    {
-      k: 'Price movement this week',
-      v: `${player.priceMove}m`,
-      fg:
-        player.priceDir === 'up'
-          ? 'var(--pos)'
-          : player.priceDir === 'down'
-            ? 'var(--neg)'
-            : 'var(--fg3)',
-    },
-  ]
-
-  return {
-    name: player.name,
-    shortName: surname(player.name),
-    rivalShort: rivalSurname,
-    meta: `${player.team} · ${player.pos} · £${player.price.toFixed(1)}m · ${player.own.toFixed(1)}% owned`,
-    newsLine: player.status === 'ok' ? 'No availability concerns' : player.note,
-    statusFg: STATUS_FG[player.status],
-    summary: `${player.ppg.toFixed(1)} points per game this season, from ${player.mins} minutes played.`,
-    rivalOptions,
-    versus,
-    versusVerdict,
-    table,
-    next: player.next,
-  }
-}
-

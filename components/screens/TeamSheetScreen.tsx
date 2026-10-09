@@ -5,7 +5,7 @@ import { Sparkline } from '../Sparkline'
 import type { PageKey, Player } from '../types'
 
 const STATUS_WORD: Record<Player['status'], [string, string]> = {
-  ok: ['', 'var(--fg3)'],
+  ok: ['Available', 'var(--fg3)'],
   risk: ['Doubt', 'var(--warn)'],
   out: ['Out', 'var(--neg)'],
 }
@@ -23,7 +23,9 @@ function XiRow({
   return (
     <div
       onClick={onOpen}
-      className="border-border grid cursor-pointer items-center gap-2.75 border-b py-1.75 px-3.5 hover:bg-(--card2)"
+      data-exp
+      data-lay="xi"
+      className="border-border grid cursor-pointer items-center gap-2.75 border-b py-1.75 px-3.5"
       style={{ gridTemplateColumns: '14px minmax(0,1fr) 66px 46px 46px 54px' }}
     >
       <span
@@ -49,20 +51,24 @@ function XiRow({
         <span className="fig ml-1.75 text-[9.5px]" style={{ color: 'var(--fg3)' }}>
           {p.team} · {p.pos}
         </span>
-        {p.status !== 'ok' ? (
+        {p.chance < 100 ? (
           <span className="ed ml-1.75 text-xs" style={{ color: dot }}>
             {p.chance}%
           </span>
         ) : null}
       </span>
-      <span className="flex justify-end">
-        <Sparkline hist={p.hist} width={40} height={15} />
+      <span data-sm-hide className="flex justify-end">
+        <Sparkline hist={p.hist} width={62} height={20} />
       </span>
       <span className="fig text-right text-[12.5px]" style={{ color: 'var(--accent)' }}>
         {p.xgi.toFixed(2)}
       </span>
       <span className="fig text-right text-[12.5px]">{p.ep.toFixed(1)}</span>
-      <span className="fig text-right text-[11.5px]" style={{ color: 'var(--fg3)' }}>
+      <span
+        data-sm-hide
+        className="fig text-right text-[11.5px]"
+        style={{ color: 'var(--fg3)' }}
+      >
         £{p.price.toFixed(1)}
       </span>
     </div>
@@ -74,7 +80,8 @@ function BenchRow({ p, onOpen }: { p: Player; onOpen: () => void }) {
   return (
     <div
       onClick={onOpen}
-      className="border-border grid cursor-pointer items-center gap-2.75 border-b py-1.5 px-3.5 hover:bg-(--card2)"
+      data-exp
+      className="border-border grid cursor-pointer items-center gap-2.75 border-b py-1.75 px-3.5"
       style={{ gridTemplateColumns: '14px minmax(0,1fr) 46px 54px' }}
     >
       <span
@@ -82,17 +89,16 @@ function BenchRow({ p, onOpen }: { p: Player; onOpen: () => void }) {
         style={{ background: dot }}
       />
       <span className="min-w-0">
-        <span className="dsp text-[15.5px]" style={{ color: 'var(--fg2)' }}>
+        <span className="dsp text-base" style={{ color: 'var(--fg2)' }}>
           {p.name}
         </span>
         <span className="fig ml-1.75 text-[9.5px]" style={{ color: 'var(--fg3)' }}>
           {p.team} · {p.pos}
         </span>
-        {p.status !== 'ok' ? (
-          <span className="ed ml-1.75 text-xs" style={{ color: dot }}>
-            {word} {p.chance}%
-          </span>
-        ) : null}
+        <span className="ed ml-1.75 text-xs" style={{ color: dot }}>
+          {word}
+          {p.chance < 100 ? ` ${p.chance}%` : ''}
+        </span>
       </span>
       <span className="fig text-right text-xs" style={{ color: 'var(--fg2)' }}>
         {p.ep.toFixed(1)}
@@ -129,15 +135,15 @@ export function TeamSheetScreen({
   return (
     <section
       data-lay="split"
-      className="grid items-start gap-5.5 px-7.5 py-5"
+      className="grid flex-1 items-start gap-5.5 px-7.5 pt-5 pb-6.5"
       style={{ gridTemplateColumns: 'minmax(0,1fr) 300px' }}
     >
       <div>
-        <div className="mb-2.5 flex items-baseline gap-3">
-          <span className="dsp text-[27px]">Starting XI</span>
+        <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="dsp text-[27px] whitespace-nowrap">Starting XI</span>
           <span className="ed text-[13px]" style={{ color: 'var(--fg3)' }}>
             <span className="sp">P</span> penalties · <span className="sp">C</span>{' '}
-            corners · trend is points over the last five
+            corners · trend is xGI over five
           </span>
         </div>
         <div
@@ -154,7 +160,7 @@ export function TeamSheetScreen({
           ))}
         </div>
 
-        <div className="dsp mt-4 mb-2 text-[22px]">Bench, in order</div>
+        <div className="dsp mt-4 mb-2 text-[22px]">Bench</div>
         <div
           className="overflow-hidden rounded-(--r-card) border"
           style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
@@ -210,6 +216,7 @@ export function TeamSheetScreen({
             ))}
             <button
               onClick={() => onNavigate('fixtures')}
+              data-act
               className="mt-2.75 cursor-pointer rounded-(--r-ctl) px-3.25 py-1.75 text-xs font-semibold"
               style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
             >
