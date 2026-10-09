@@ -45,8 +45,9 @@ import {
   FormBookScreen,
   type FormBookFilters,
 } from '@/components/screens/FormBookScreen'
+import { PicksScreen } from '@/components/screens/PicksScreen'
 import { TeamSheetScreen } from '@/components/screens/TeamSheetScreen'
-import { PAGES, type Player } from '@/components/types'
+import { PAGES, type FixtureCell, type Player } from '@/components/types'
 
 function pad(n: number) {
   return String(n).padStart(2, '0')
@@ -247,6 +248,22 @@ export default function Home() {
     effectiveHorizon,
     effectiveWindow,
   ])
+
+  // Picks looks up to six weeks ahead from the same gameweek as the planner.
+  const pickFixtures = useMemo(() => {
+    const byTeam: Record<string, FixtureCell[]> = {}
+    if (!bootstrapQuery.data || !fixturesQuery.data || !plannerFromEventId)
+      return byTeam
+    const byTeamId = buildFixturesByTeamId(
+      bootstrapQuery.data,
+      fixturesQuery.data,
+      plannerFromEventId,
+      6
+    )
+    for (const team of bootstrapQuery.data.teams)
+      byTeam[team.short_name] = byTeamId[team.id] ?? []
+    return byTeam
+  }, [bootstrapQuery.data, fixturesQuery.data, plannerFromEventId])
 
   const xi = useMemo(() => {
     const picks = entryEventQuery.data?.picks ?? []
@@ -509,6 +526,16 @@ export default function Home() {
               windowLen={fixturePlanner.windowLen}
               onWindowChange={setWindowLen}
               squadTeams={squadTeams}
+            />
+          ) : null}
+
+          {pageKey === 'picks' ? (
+            <PicksScreen
+              players={allPlayers}
+              squadIds={squadIds}
+              fixturesByTeam={pickFixtures}
+              fromEventId={plannerFromEventId ?? 1}
+              onOpenPlayer={setSelectedId}
             />
           ) : null}
 

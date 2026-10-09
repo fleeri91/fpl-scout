@@ -2,7 +2,8 @@ export type PlayerStatus = 'ok' | 'risk' | 'out'
 export type Position = 'GKP' | 'DEF' | 'MID' | 'FWD'
 export type Delta = 'up' | 'down' | 'flat'
 
-export type PageKey = 'team-sheet' | 'form-book' | 'fixtures' | 'chips'
+export type PageKey =
+  'team-sheet' | 'form-book' | 'fixtures' | 'picks' | 'chips'
 
 export interface PageConfig {
   key: PageKey
@@ -13,6 +14,7 @@ export const PAGES: PageConfig[] = [
   { key: 'team-sheet', title: 'Team' },
   { key: 'form-book', title: 'Form' },
   { key: 'fixtures', title: 'Fixtures' },
+  { key: 'picks', title: 'Picks' },
   { key: 'chips', title: 'Chips' },
 ]
 
