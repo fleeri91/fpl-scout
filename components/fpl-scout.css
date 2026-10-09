@@ -254,8 +254,11 @@
   }
   .fpl-scout [data-lay='meters'] {
     width: 100%;
-    overflow-x: auto;
+    overflow-x: auto !important;
     margin-bottom: 10px;
+  }
+  .fpl-scout [data-lay='meters'] > div:last-child {
+    border-right: none !important;
   }
   .fpl-scout [data-lay='nav'] {
     display: flex;
@@ -332,12 +335,16 @@
 }
 /* Fixtures controls/runs and the phone bottom tab bar + sticky masthead. */
 .fpl-scout [data-tabbar],
-.fpl-scout [data-grab] {
+.fpl-scout [data-grab],
+.fpl-scout [data-runsm] {
   display: none;
 }
 @media (max-width: 1180px) {
   .fpl-scout [data-fxaside] {
-    order: -1;
+    display: none !important;
+  }
+  .fpl-scout [data-runsm] {
+    display: block !important;
   }
   .fpl-scout [data-runs] {
     display: flex;

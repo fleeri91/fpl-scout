@@ -67,7 +67,7 @@ export function Masthead({
       </div>
       <div
         data-lay="meters"
-        className="flex items-center rounded-(--r-card) border"
+        className="flex max-w-full items-stretch rounded-(--r-card) border"
         style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
       >
         {meters.map((m) => (

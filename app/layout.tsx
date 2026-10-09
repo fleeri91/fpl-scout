@@ -1,10 +1,5 @@
 import type { Metadata } from 'next'
-import {
-  Archivo,
-  Big_Shoulders,
-  Familjen_Grotesk,
-  Spline_Sans_Mono,
-} from 'next/font/google'
+import { Archivo, Familjen_Grotesk, Spline_Sans_Mono } from 'next/font/google'
 import './globals.css'
 
 import QueryProvider from '@/provider/QueryProvider'
@@ -15,15 +10,6 @@ const familjenGrotesk = Familjen_Grotesk({
   weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
   variable: '--font-sans',
-})
-
-// Big Shoulders' `opsz` axis is what gives it the tall, condensed "Display"
-// cut at large sizes (and a text-friendly cut at small ones) — the family
-// no longer ships as a separate Big_Shoulders_Display export.
-const bigShouldersDisplay = Big_Shoulders({
-  subsets: ['latin'],
-  axes: ['opsz'],
-  variable: '--font-heading',
 })
 
 const splineSansMono = Spline_Sans_Mono({
@@ -55,7 +41,6 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         splineSansMono.variable,
         'font-sans',
         familjenGrotesk.variable,
-        bigShouldersDisplay.variable,
         archivo.variable
       )}
     >

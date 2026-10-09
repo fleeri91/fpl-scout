@@ -34,8 +34,8 @@ export function ConnectScreen({
             Enter your team ID
           </div>
           <div className="ed mt-2 text-sm leading-relaxed text-pretty">
-            Everything on the next screen is built from your own squad. Your
-            ID is the number in your team&apos;s URL on the official site —
+            Everything on the next screen is built from your own squad. Your ID
+            is the number in your team&apos;s URL on the official site —
             fantasy.premierleague.com/entry/
             <span className="text-foreground">3821094</span>/event/12.
           </div>
@@ -68,7 +68,10 @@ export function ConnectScreen({
             </button>
           </div>
           {entryError ? (
-            <div className="ed mt-1.75 text-[12.5px]" style={{ color: 'var(--neg)' }}>
+            <div
+              className="ed mt-1.75 text-[12.5px]"
+              style={{ color: 'var(--neg)' }}
+            >
               {entryError}
             </div>
           ) : null}
@@ -87,7 +90,7 @@ export function ConnectScreen({
                   className="flex w-full cursor-pointer items-baseline justify-between gap-3 border-b bg-transparent px-0.5 py-2.5 text-left"
                   style={{ borderColor: 'var(--border)', color: 'var(--fg)' }}
                 >
-                  <span>
+                  <span className="min-w-0 flex-auto overflow-hidden text-ellipsis whitespace-nowrap">
                     <span className="dsp text-[15px]">
                       {t.name ?? `Team ${t.id}`}
                     </span>
@@ -100,7 +103,7 @@ export function ConnectScreen({
                   </span>
                   {t.rank != null ? (
                     <span
-                      className="fig text-[11.5px]"
+                      className="fig text-[11.5px] whitespace-nowrap"
                       style={{ color: 'var(--fg3)' }}
                     >
                       rank {t.rank.toLocaleString('en-GB')}

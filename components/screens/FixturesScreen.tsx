@@ -61,6 +61,11 @@ export function FixturesScreen({
     [rows]
   )
 
+  const topClubs = useMemo(
+    () => new Set(easiestRuns.map((r) => r.team)),
+    [easiestRuns]
+  )
+
   const togglePin = (team: string) => setPin((p) => (p === team ? null : team))
 
   const lastGw = fromEventId + horizon - 1
@@ -83,8 +88,8 @@ export function FixturesScreen({
             className="ed mt-0.75 text-[13px] text-pretty"
             style={{ color: 'var(--fg3)' }}
           >
-            Green is easy, red is hard. Click a club to focus it and see its
-            easiest run.
+            Green is easy, red is hard. The outlined boxes mark the five easiest
+            runs. Click a club to see its own.
           </div>
         </div>
 
@@ -179,6 +184,58 @@ export function FixturesScreen({
           </button>
         </div>
 
+        <div data-runsm className="mb-3.5">
+          <div className="mb-2 flex items-baseline gap-2.5">
+            <span className="lbl">Easiest runs</span>
+            <span
+              className="ed text-xs whitespace-nowrap"
+              style={{ color: 'var(--fg3)' }}
+            >
+              Tap to focus
+            </span>
+          </div>
+          <div data-runs>
+            {easiestRuns.map((r, rank) => (
+              <button
+                key={r.team}
+                onClick={() => togglePin(r.team)}
+                className="block cursor-pointer rounded-(--r-card) border px-3 py-2.5 text-left"
+                style={{
+                  borderColor:
+                    pin === r.team ? 'var(--accent)' : 'var(--border)',
+                  background: 'var(--card)',
+                  color: 'var(--fg)',
+                }}
+              >
+                <div className="flex items-baseline justify-between gap-2.5">
+                  <span className="flex items-baseline gap-1.75">
+                    <span
+                      className="fig text-[10px]"
+                      style={{ color: 'var(--fg3)' }}
+                    >
+                      {rank + 1}
+                    </span>
+                    <span className="dsp text-[17px]">{r.team}</span>
+                  </span>
+                  <span
+                    className="fig text-xs whitespace-nowrap"
+                    style={{ color: 'var(--pos)' }}
+                  >
+                    {r.best.avg.toFixed(1)} avg
+                  </span>
+                </div>
+                <RunStrip row={r} windowLen={windowLen} className="mt-1.75" />
+                <div
+                  className="fig mt-1.5 text-[10px]"
+                  style={{ color: 'var(--fg3)' }}
+                >
+                  {r.best.range}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1">
             <span className="lbl mr-1">Easier</span>
@@ -190,12 +247,6 @@ export function FixturesScreen({
             <span className="lbl ml-1">Harder</span>
           </div>
           <div className="flex items-center gap-3.5">
-            <span className="lbl flex items-center gap-1.25">
-              <span className="text-[9px]" style={{ color: 'var(--accent)' }}>
-                ●
-              </span>
-              You own
-            </span>
             <span className="lbl flex items-center gap-1.25">
               <span
                 className="block h-2.25 w-3 rounded-[2px]"
@@ -264,7 +315,6 @@ export function FixturesScreen({
             </thead>
             <tbody>
               {matrix.map((row) => {
-                const holding = holdingCounts.get(row.team) ?? 0
                 const on = pin === row.team
                 return (
                   <tr
@@ -282,20 +332,14 @@ export function FixturesScreen({
                       }}
                     >
                       <span className="dsp text-[14.5px]">{row.team}</span>
-                      {holding > 0 ? (
-                        <span
-                          className="fig ml-1.25 text-[8px]"
-                          style={{ color: 'var(--accent)' }}
-                        >
-                          {'●'.repeat(holding)}
-                        </span>
-                      ) : null}
                     </td>
                     {row.cells.map((c, i) => {
                       const home = c.opp === c.opp.toUpperCase()
                       const opp = c.opp.toUpperCase()
+                      // Unfocused, the five easiest runs are outlined;
+                      // focused, only the chosen club's.
                       const ringed =
-                        on &&
+                        (pin ? on : topClubs.has(row.team)) &&
                         i >= row.best.start &&
                         i < row.best.start + windowLen
                       return (
@@ -391,68 +435,68 @@ export function FixturesScreen({
           focus.
         </div>
         <div data-runs>
-          {easiestRuns.map((r, rank) => {
-            const holding = holdingCounts.get(r.team) ?? 0
-            return (
-              <button
-                key={r.team}
-                onClick={() => togglePin(r.team)}
-                className="mb-2 block w-full cursor-pointer rounded-(--r-card) border px-3.25 py-2.75 text-left hover:border-(--border2)!"
-                style={{
-                  borderColor:
-                    pin === r.team ? 'var(--accent)' : 'var(--border)',
-                  background: 'var(--card)',
-                  color: 'var(--fg)',
-                }}
-              >
-                <div className="flex items-baseline justify-between gap-2.5">
-                  <span className="flex items-baseline gap-2">
-                    <span
-                      className="fig text-[10px]"
-                      style={{ color: 'var(--fg3)' }}
-                    >
-                      {rank + 1}
-                    </span>
-                    <span className="dsp text-lg">{r.team}</span>
-                  </span>
+          {easiestRuns.map((r, rank) => (
+            <button
+              key={r.team}
+              onClick={() => togglePin(r.team)}
+              className="mb-2 block w-full cursor-pointer rounded-(--r-card) border px-3.25 py-2.75 text-left hover:border-(--border2)!"
+              style={{
+                borderColor: pin === r.team ? 'var(--accent)' : 'var(--border)',
+                background: 'var(--card)',
+                color: 'var(--fg)',
+              }}
+            >
+              <div className="flex items-baseline justify-between gap-2.5">
+                <span className="flex items-baseline gap-2">
                   <span
-                    className="fig text-[13px]"
-                    style={{ color: 'var(--pos)' }}
+                    className="fig text-[10px]"
+                    style={{ color: 'var(--fg3)' }}
                   >
-                    {r.best.avg.toFixed(1)} avg
+                    {rank + 1}
                   </span>
-                </div>
-                <div className="mt-2 flex gap-0.75">
-                  {r.cells
-                    .slice(r.best.start, r.best.start + windowLen)
-                    .map((c, i) => (
-                      <span
-                        key={i}
-                        data-d={c.d}
-                        className="h-5 flex-1 text-[10px]"
-                      >
-                        {c.opp.toUpperCase()}
-                      </span>
-                    ))}
-                </div>
-                <div
-                  className="fig mt-1.5 flex justify-between text-[10px]"
-                  style={{ color: 'var(--fg3)' }}
+                  <span className="dsp text-lg">{r.team}</span>
+                </span>
+                <span
+                  className="fig text-[13px] whitespace-nowrap"
+                  style={{ color: 'var(--pos)' }}
                 >
-                  <span>{r.best.range}</span>
-                  <span
-                    style={{
-                      color: holding ? 'var(--accent)' : 'var(--fg3)',
-                    }}
-                  >
-                    {holding ? `You own ${holding}` : 'None owned'}
-                  </span>
-                </div>
-              </button>
-            )
-          })}
+                  {r.best.avg.toFixed(1)} avg
+                </span>
+              </div>
+              <RunStrip row={r} windowLen={windowLen} className="mt-2" />
+              <div
+                className="fig mt-1.5 text-[10px]"
+                style={{ color: 'var(--fg3)' }}
+              >
+                {r.best.range}
+              </div>
+            </button>
+          ))}
         </div>
       </aside>
     </section>
+  )
+}
+
+// The fixtures making up a club's easiest run, as difficulty chips.
+function RunStrip({
+  row,
+  windowLen,
+  className,
+}: {
+  row: FixturePlannerRow
+  windowLen: number
+  className: string
+}) {
+  return (
+    <div className={`flex gap-0.75 ${className}`}>
+      {row.cells
+        .slice(row.best.start, row.best.start + windowLen)
+        .map((c, i) => (
+          <span key={i} data-d={c.d} className="h-5 flex-1 text-[10px]">
+            {c.opp.toUpperCase()}
+          </span>
+        ))}
+    </div>
   )
 }
